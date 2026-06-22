@@ -12,8 +12,8 @@ const hpp          = require('hpp');
 
 const songRoutes     = require('./routes/songs');
 const authRoutes     = require('./routes/auth');     // admin auth
-const userRoutes     = require('./routes/users');    // public user auth
-const playlistRoutes = require('./routes/playlists');
+const userRoutes     = require('./routes/Users');    // public user auth
+const playlistRoutes = require('./routes/Playlists');
 const uploadRoutes   = require('./routes/upload');
 
 const app  = express();
