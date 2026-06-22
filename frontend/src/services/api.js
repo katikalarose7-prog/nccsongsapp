@@ -52,11 +52,19 @@ const cached = async (key, fn) => {
   return data;
 };
 
-/* ── Songs ─────────────────────────────────────────────────────── */
+/* ── Songs ─────────────────────────────────────────────────────── 
 export const fetchSongs = (params) => {
   const key = JSON.stringify(params);
   return cached(key, () => API.get('/songs', { params }).then(r => r.data));
+};*/
+
+export const fetchSongs = (params) => {
+  const key = JSON.stringify(params);
+  return cached(key, () =>
+    API.get('/songs', { params }).then(r => r.data.songs || [])
+  );
 };
+
 export const fetchSong         = (id)       => API.get(`/songs/${id}`).then(r => r.data);
 export const fetchRecommended  = ()         => API.get('/songs/recommendations').then(r => r.data);
 export const fetchRecentlyPlayed = ()       => API.get('/songs/me/recent').then(r => r.data);
