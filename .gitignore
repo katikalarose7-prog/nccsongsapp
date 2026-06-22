@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Builds
+build/
+dist/
+
+# Environment files
+.env
+.env.local
+
+# Expo
+.expo/
+.expo-shared/
+
+# Logs
+*.log
