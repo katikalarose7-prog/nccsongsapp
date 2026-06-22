@@ -5,7 +5,7 @@ const rateLimit = require('express-rate-limit');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const { sendVerificationEmail, sendPasswordResetEmail } = require('../utils/email');
-const { requireUser } = require('../middleware/userAuth');
+const { requireUser } = require('../middleware/Userauth');
 
 const router = express.Router();
 
