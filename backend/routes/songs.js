@@ -5,7 +5,7 @@ const { body, validationResult } = require('express-validator');
 const Song    = require('../models/Song');
 const User    = require('../models/User');
 const { requireAdmin } = require('../middleware/auth');
-const { optionalUser, requireUser } = require('../middleware/userAuth');
+const { optionalUser, requireUser } = require('../middleware/Userauth');
 const { sendNewSongEmail, sendBulkNewSongsEmail } = require('../utils/email');
 
 const router  = express.Router();
