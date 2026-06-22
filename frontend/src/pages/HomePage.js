@@ -166,7 +166,6 @@ export default function HomePage() {
     if (songParam && songParam !== selected) {
       openSong(songParam);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   // close on Escape key
