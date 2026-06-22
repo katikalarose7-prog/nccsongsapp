@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "NCC Songs",
+    "slug": "ncc-songs",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "ncc-songs",
+    "splash": {
+      "backgroundColor": "#1a0533"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ncc.songs",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Used for voice search to find songs by speaking.",
+        "NSSpeechRecognitionUsageDescription": "Used to convert your spoken search into text."
+      },
+      "associatedDomains": ["applinks:nccsongs.church"]
+    },
+    "android": {
+      "adaptiveIcon": { "backgroundColor": "#1a0533" },
+      "package": "com.ncc.songs",
+      "permissions": ["RECORD_AUDIO"],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "https", "host": "nccsongs.church" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
+    },
+    "plugins": [
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow NCC Songs to use the microphone for voice search.",
+          "speechRecognitionPermission": "Allow NCC Songs to securely recognize your speech for voice search."
+        }
+      ]
+    ]
+  }
+}

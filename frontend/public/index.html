@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a0533" />
+  <meta name="description" content="New Covenant Church — Song Collection in English, Telugu and Hindi" />
+  <title>NCC Songs — New Covenant Church</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+  <!-- ── PWA: Android "Install App" + general installability ── -->
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/icons/icon-192.png" />
+
+  <!-- ── PWA: iOS "Add to Home Screen" support ──
+       iOS does not read manifest.json the same way Android does, so these
+       Apple-specific tags are required for the icon, status bar style, and
+       full-screen (no Safari UI) behaviour to work when added to Home Screen. -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="NCC Songs" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+  <!-- ✅ Google AdSense — replace ca-pub-XXXXXXXXXXXXXXXX with your Publisher ID -->
+  <!-- Uncomment the line below once you have your AdSense account approved -->
+  <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script> -->
+
+  <style>
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <noscript>Please enable JavaScript to use this app.</noscript>
+  <div id="root"></div>
+
+  <script>
+    // Register the service worker — required for Android's install prompt.
+    // Safe no-op on browsers without support (older Safari, etc).
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>

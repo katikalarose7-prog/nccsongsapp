@@ -1,0 +1,39 @@
+{
+  "short_name": "NCC Songs",
+  "name": "New Covenant Church Songs",
+  "description": "Worship songs in English, Telugu & Hindi — search, save favourites, build playlists.",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-192-maskable.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512-maskable.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ],
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#1a0533",
+  "background_color": "#1a0533",
+  "categories": ["music", "lifestyle"],
+  "prefer_related_applications": false
+}
