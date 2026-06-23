@@ -406,8 +406,7 @@ const totalPages = total ? Math.ceil(total / 18) : 1;
                 ) : (
                   <>
                     <div className="songs-grid">
-  {(data?.songs ?? []).map(s => <SongCard key={s._id} song={s} />)}
-</div>
+{(data?.songs || []).map(s => <SongCard key={s._id} song={s} />)}</div>
 
                     {totalPages > 1 && (
                       <div className="pagination">
