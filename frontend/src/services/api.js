@@ -54,6 +54,7 @@ const cached = async (key, fn) => {
 
 /* ── Songs ─────────────────────────────────────────────────────── */
 export const fetchSongs = (params) => {
+  cache.clear(); // temporary — remove after fix confirmed
   const key = JSON.stringify(params);
   return cached(key, () => API.get('/songs', { params }).then(r => r.data));
 };

@@ -102,11 +102,9 @@ export default function HomePage() {
       if (lang !== 'All') params.language = lang.toLowerCase();
       if (cat  !== 'All') params.category = cat.toLowerCase();
 
-      
       const res = await fetchSongs(params);
-      console.log('FETCH SONGS RESULT:', res);
-
-      setData(res);
+const normalized = Array.isArray(res) ? { songs: res, total: res.length } : res;
+setData(normalized);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, [dq, lang, cat, sort, page]);
@@ -200,8 +198,11 @@ export default function HomePage() {
     setShowFavs(false);
   };
 
-  const totalPages = data ? Math.ceil(data.total / 18) : 1;
-
+ // const totalPages = data ? Math.ceil(data.total / 18) : 1;
+// fix
+const songs = Array.isArray(data) ? data : (data.songs ?? []);
+const total  = Array.isArray(data) ? data.length : (data?.total ?? 0);
+const totalPages = total ? Math.ceil(total / 18) : 1;
   // ── Song Card ──────────────────────────────────────────────────
   const SongCard = ({ song }) => (
     <div className="song-card" onClick={() => openSong(song._id)} role="button" tabIndex={0}
@@ -396,7 +397,7 @@ export default function HomePage() {
                 <AdBanner />
                 {loading ? (
                   <SkeletonGrid />
-                ) : data?.songs?.length === 0 ? (
+                ) : data.songs?.length === 0 ? (
                   <div className="empty">
                     <div className="empty-icon"><Music size={48} /></div>
                     <h3>No songs found</h3>
@@ -405,8 +406,8 @@ export default function HomePage() {
                 ) : (
                   <>
                     <div className="songs-grid">
-                      {data?.songs.map(s => <SongCard key={s._id} song={s} />)}
-                    </div>
+  {(data?.songs ?? []).map(s => <SongCard key={s._id} song={s} />)}
+</div>
 
                     {totalPages > 1 && (
                       <div className="pagination">
