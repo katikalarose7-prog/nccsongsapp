@@ -101,6 +101,8 @@ export default function HomePage() {
       if (dq)           params.q        = dq;
       if (lang !== 'All') params.language = lang.toLowerCase();
       if (cat  !== 'All') params.category = cat.toLowerCase();
+
+      
       const res = await fetchSongs(params);
       console.log('FETCH SONGS RESULT:', res);
 
