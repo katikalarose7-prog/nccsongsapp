@@ -4,7 +4,7 @@ const API = axios.create({
   baseURL: process.env.REACT_APP_API_URL || '/api',
   timeout: 10000,
 });
-
+console.log('API URL:', process.env.REACT_APP_API_URL);
 /* Two separate auth tokens are kept — admins and regular users are
    completely different identities with different permissions, so they
    must never share a storage key (that would let an admin session leak

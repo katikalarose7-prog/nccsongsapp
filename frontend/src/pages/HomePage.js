@@ -101,14 +101,8 @@ export default function HomePage() {
       if (dq)           params.q        = dq;
       if (lang !== 'All') params.language = lang.toLowerCase();
       if (cat  !== 'All') params.category = cat.toLowerCase();
-      //const res = await fetchSongs(params);
-      //setData(res;)
       const res = await fetchSongs(params);
-
-setData({
-  songs: Array.isArray(res?.songs) ? res.songs : [],
-  total: res?.total || 0
-});
+      setData(res);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, [dq, lang, cat, sort, page]);
@@ -386,7 +380,9 @@ setData({
                 <option value="newest">Newest</option>
               </select>
               {data && !loading && (
-                <span className="filter-count">{data.total} song{data.total !== 1 ? 's' : ''}</span>
+                <span className="filter-count">
+  {data?.total || 0} song{(data?.total || 0) !== 1 ? 's' : ''}
+                  </span>
               )}
             </div>
 
@@ -405,11 +401,8 @@ setData({
                 ) : (
                   <>
                     <div className="songs-grid">
-{Array.isArray(data?.songs) &&
-  data.songs.map(s => (
-    <SongCard key={s._id} song={s} />
-  ))
-}                    </div>
+                      {data?.songs.map(s => <SongCard key={s._id} song={s} />)}
+                    </div>
 
                     {totalPages > 1 && (
                       <div className="pagination">
