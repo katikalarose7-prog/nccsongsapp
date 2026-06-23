@@ -101,8 +101,14 @@ export default function HomePage() {
       if (dq)           params.q        = dq;
       if (lang !== 'All') params.language = lang.toLowerCase();
       if (cat  !== 'All') params.category = cat.toLowerCase();
+      //const res = await fetchSongs(params);
+      //setData(res;)
       const res = await fetchSongs(params);
-      setData(res);
+
+setData({
+  songs: Array.isArray(res?.songs) ? res.songs : [],
+  total: res?.total || 0
+});
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   }, [dq, lang, cat, sort, page]);
@@ -399,8 +405,11 @@ export default function HomePage() {
                 ) : (
                   <>
                     <div className="songs-grid">
-                      {data.songs.map(s => <SongCard key={s._id} song={s} />)}
-                    </div>
+{Array.isArray(data?.songs) &&
+  data.songs.map(s => (
+    <SongCard key={s._id} song={s} />
+  ))
+}                    </div>
 
                     {totalPages > 1 && (
                       <div className="pagination">
