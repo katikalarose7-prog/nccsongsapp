@@ -16,6 +16,9 @@ const userRoutes     = require('./routes/Users');    // public user auth
 const playlistRoutes = require('./routes/Playlists');
 const uploadRoutes   = require('./routes/upload');
 
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
+
 const app  = express();
 const PORT = process.env.PORT || 5000;
 
