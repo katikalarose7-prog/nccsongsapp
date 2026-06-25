@@ -27,6 +27,12 @@ const isConfigured = Boolean(SMTP_HOST && SMTP_USER && SMTP_PASS);
 
 let transporter = null;
 if (isConfigured) {
+  console.log({
+  SMTP_HOST,
+  SMTP_PORT,
+  SMTP_USER,
+  HAS_PASS: !!SMTP_PASS,
+});
   transporter = nodemailer.createTransport({
     host: SMTP_HOST,
     port: SMTP_PORT,
@@ -38,13 +44,13 @@ if (isConfigured) {
 
   // Verify connection on startup so we know immediately if SMTP is broken
   transporter.verify((err) => {
-    if (err) {
-      console.error('❌ SMTP connection failed:', err.message);
-      console.error('   Check SMTP_HOST, SMTP_USER, SMTP_PASS in Railway env vars');
-    } else {
-      console.log('✅ SMTP ready — emails will be sent via', SMTP_HOST);
-    }
-  });
+  if (err) {
+    console.error('FULL SMTP ERROR:');
+    console.error(err);
+  } else {
+    console.log('SMTP Ready');
+  }
+});
 }
 
 async function send({ to, subject, html }) {
