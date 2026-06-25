@@ -24,6 +24,7 @@ export default function UserLogin() {
         await userForgotPassword(form.email);
         toast.success('If that email is registered, a reset link has been sent.');
         setMode('login');
+        setLoading(false);
         return;
       }
       const res = mode === 'login'
@@ -113,12 +114,12 @@ export default function UserLogin() {
         <div style={{ textAlign: 'center', marginTop: 18, fontSize: 13, color: 'var(--text-muted)' }}>
           {mode === 'login' && (
             <>
-              <button onClick={() => setMode('forgot')} style={{ background: 'none', border: 'none', color: 'var(--brand-light)', cursor: 'pointer', fontWeight: 600 }}>
+              <button onClick={() => setMode('forgot')} style={{ background: 'none', border: 'none', color: '#7c3aed', cursor: 'pointer', fontWeight: 600, fontSize: 13, textDecoration: 'underline', padding: '4px 0' }}>
                 Forgot password?
               </button>
               <div style={{ marginTop: 10 }}>
                 New here?{' '}
-                <button onClick={() => setMode('register')} style={{ background: 'none', border: 'none', color: 'var(--brand-light)', cursor: 'pointer', fontWeight: 600 }}>
+                <button onClick={() => setMode('register')} style={{ background: 'none', border: 'none', color: '#7c3aed', cursor: 'pointer', fontWeight: 600 }}>
                   Create an account
                 </button>
               </div>
@@ -127,13 +128,13 @@ export default function UserLogin() {
           {mode === 'register' && (
             <>
               Already have an account?{' '}
-              <button onClick={() => setMode('login')} style={{ background: 'none', border: 'none', color: 'var(--brand-light)', cursor: 'pointer', fontWeight: 600 }}>
+              <button onClick={() => setMode('login')} style={{ background: 'none', border: 'none', color: '#7c3aed', cursor: 'pointer', fontWeight: 600 }}>
                 Sign in
               </button>
             </>
           )}
           {mode === 'forgot' && (
-            <button onClick={() => setMode('login')} style={{ background: 'none', border: 'none', color: 'var(--brand-light)', cursor: 'pointer', fontWeight: 600 }}>
+            <button onClick={() => setMode('login')} style={{ background: 'none', border: 'none', color: '#7c3aed', cursor: 'pointer', fontWeight: 600 }}>
               ← Back to sign in
             </button>
           )}

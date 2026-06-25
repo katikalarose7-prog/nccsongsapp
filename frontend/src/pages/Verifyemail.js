@@ -1,144 +1,110 @@
-import React, { useState } from 'react';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
-import toast from 'react-hot-toast';
-import { ArrowLeft, Mail, Lock, User as UserIcon } from 'lucide-react';
-import { userLogin, userRegister, userForgotPassword } from '../services/api';
-import { useUserAuth } from '../context/Userauthcontext';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
+import { CheckCircle, XCircle, Loader } from 'lucide-react';
+import { verifyEmail } from '../services/api';
 
-export default function UserLogin() {
-  const [mode, setMode] = useState('login'); // 'login' | 'register' | 'forgot'
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
-  const [loading, setLoading] = useState(false);
-  const { loginUser } = useUserAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const redirectTo = location.state?.from || '/';
+export default function VerifyEmail() {
+  const [params] = useSearchParams();
+  const [status, setStatus] = useState('checking'); // checking | success | error
+  const [message, setMessage] = useState('');
 
-  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      if (mode === 'forgot') {
-        await userForgotPassword(form.email);
-        toast.success('If that email is registered, a reset link has been sent.');
-        setMode('login');
-        return;
-      }
-      const res = mode === 'login'
-        ? await userLogin({ email: form.email, password: form.password })
-        : await userRegister(form);
-      loginUser(res.token, res.user);
-      toast.success(mode === 'login' ? `Welcome back, ${res.user.name}!` : `Welcome, ${res.user.name}! Check your email to verify your account.`);
-      navigate(redirectTo);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Something went wrong');
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    const token = params.get('token');
+    if (!token) {
+      setStatus('error');
+      setMessage('No verification token found in this link. Please check your email and try again.');
+      return;
     }
-  };
+    verifyEmail(token)
+      .then(() => {
+        setStatus('success');
+        setMessage('Your email is verified. You can now receive song notifications and access all features.');
+      })
+      .catch((err) => {
+        setStatus('error');
+        setMessage(err.response?.data?.message || 'This verification link has expired or already been used. Please register again or contact support.');
+      });
+  }, [params]);
 
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'linear-gradient(160deg, var(--brand-deep), #3b0f6e 60%, #1a0533)', padding: 20,
+      background: 'linear-gradient(160deg, #1a0533, #3b0f6e 60%, #1a0533)', padding: 20,
     }}>
       <div style={{
-        background: '#fff', borderRadius: 20, padding: 40, width: '100%', maxWidth: 420,
-        boxShadow: '0 24px 64px rgba(0,0,0,0.3)', position: 'relative',
+        background: '#fff', borderRadius: 20, padding: 48, width: '100%', maxWidth: 420,
+        boxShadow: '0 24px 64px rgba(0,0,0,0.35)', textAlign: 'center',
       }}>
-        <Link to="/" style={{
-          position: 'absolute', top: 20, left: 20, display: 'flex', alignItems: 'center',
-          gap: 4, fontSize: 13, color: 'var(--text-muted)', fontWeight: 500,
-        }}>
-          <ArrowLeft size={14} /> Back
-        </Link>
+        {/* Logo */}
+        <div style={{
+          width: 64, height: 64, background: 'linear-gradient(135deg,#f0a500,#f59e0b)',
+          borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 30, margin: '0 auto 20px', boxShadow: '0 4px 16px rgba(240,165,0,0.4)',
+        }}>✝</div>
 
-        <div style={{ textAlign: 'center', marginBottom: 28, marginTop: 12 }}>
-          <div style={{
-            width: 56, height: 56, background: 'linear-gradient(135deg,#f0a500,#f59e0b)',
-            borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 26, margin: '0 auto 14px',
-          }}>✝</div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--brand-deep)' }}>
-            {mode === 'login' ? 'Welcome back' : mode === 'register' ? 'Create your account' : 'Reset your password'}
-          </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13, marginTop: 4 }}>
-            {mode === 'login' ? 'Sign in to access your playlists & favourites'
-              : mode === 'register' ? 'Save favourites, build playlists, and get notified of new songs'
-              : "We'll email you a reset link"}
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {mode === 'register' && (
-            <div className="form-group">
-              <label className="form-label">Name</label>
-              <div style={{ position: 'relative' }}>
-                <UserIcon size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input className="form-input" style={{ paddingLeft: 36 }} required
-                  value={form.name} onChange={set('name')} placeholder="Your name" />
-              </div>
+        {status === 'checking' && (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+              <Loader size={48} color="#7c3aed" style={{ animation: 'spin 1s linear infinite' }} />
             </div>
-          )}
+            <h2 style={{ fontFamily: 'Georgia,serif', fontSize: 22, color: '#1a0533', marginBottom: 8 }}>
+              Verifying your email…
+            </h2>
+            <p style={{ color: '#888', fontSize: 14 }}>Please wait a moment.</p>
+          </>
+        )}
 
-          <div className="form-group">
-            <label className="form-label">Email</label>
-            <div style={{ position: 'relative' }}>
-              <Mail size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input className="form-input" style={{ paddingLeft: 36 }} type="email" required autoComplete="username"
-                value={form.email} onChange={set('email')} placeholder="you@example.com" />
+        {status === 'success' && (
+          <>
+            <CheckCircle size={56} color="#16a34a" style={{ margin: '0 auto 16px', display: 'block' }} />
+            <h2 style={{ fontFamily: 'Georgia,serif', fontSize: 22, color: '#1a0533', marginBottom: 10 }}>
+              Email Verified! 🎉
+            </h2>
+            <p style={{ color: '#555', fontSize: 14, lineHeight: 1.6, marginBottom: 28 }}>{message}</p>
+            <Link to="/" style={{
+              display: 'inline-block', background: '#7c3aed', color: '#fff',
+              padding: '13px 28px', borderRadius: 10, textDecoration: 'none',
+              fontWeight: 700, fontSize: 15,
+            }}>
+              Browse Songs 🎵
+            </Link>
+          </>
+        )}
+
+        {status === 'error' && (
+          <>
+            <XCircle size={56} color="#dc2626" style={{ margin: '0 auto 16px', display: 'block' }} />
+            <h2 style={{ fontFamily: 'Georgia,serif', fontSize: 22, color: '#1a0533', marginBottom: 10 }}>
+              Verification Failed
+            </h2>
+            <p style={{ color: '#555', fontSize: 14, lineHeight: 1.6, marginBottom: 28 }}>{message}</p>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Link to="/login" style={{
+                display: 'inline-block', background: '#7c3aed', color: '#fff',
+                padding: '13px 24px', borderRadius: 10, textDecoration: 'none',
+                fontWeight: 700, fontSize: 14,
+              }}>
+                Go to Login
+              </Link>
+              <Link to="/" style={{
+                display: 'inline-block', background: '#f5f0ff', color: '#7c3aed',
+                padding: '13px 24px', borderRadius: 10, textDecoration: 'none',
+                fontWeight: 700, fontSize: 14, border: '1.5px solid #e0d4ff',
+              }}>
+                Browse Songs
+              </Link>
             </div>
-          </div>
+          </>
+        )}
 
-          {mode !== 'forgot' && (
-            <div className="form-group">
-              <label className="form-label">Password</label>
-              <div style={{ position: 'relative' }}>
-                <Lock size={15} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input className="form-input" style={{ paddingLeft: 36 }} type="password" required minLength={6}
-                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                  value={form.password} onChange={set('password')} placeholder="••••••••" />
-              </div>
-            </div>
-          )}
-
-          <button className="btn btn-primary" type="submit" disabled={loading}
-            style={{ width: '100%', justifyContent: 'center', padding: 13, marginTop: 4 }}>
-            {loading ? 'Please wait…' : mode === 'login' ? 'Sign In' : mode === 'register' ? 'Create Account' : 'Send Reset Link'}
-          </button>
-        </form>
-
-        <div style={{ textAlign: 'center', marginTop: 18, fontSize: 13, color: 'var(--text-muted)' }}>
-          {mode === 'login' && (
-            <>
-              <button onClick={() => setMode('forgot')} style={{ background: 'none', border: 'none', color: 'var(--brand-light)', cursor: 'pointer', fontWeight: 600 }}>
-                Forgot password?
-              </button>
-              <div style={{ marginTop: 10 }}>
-                New here?{' '}
-                <button onClick={() => setMode('register')} style={{ background: 'none', border: 'none', color: 'var(--brand-light)', cursor: 'pointer', fontWeight: 600 }}>
-                  Create an account
-                </button>
-              </div>
-            </>
-          )}
-          {mode === 'register' && (
-            <>
-              Already have an account?{' '}
-              <button onClick={() => setMode('login')} style={{ background: 'none', border: 'none', color: 'var(--brand-light)', cursor: 'pointer', fontWeight: 600 }}>
-                Sign in
-              </button>
-            </>
-          )}
-          {mode === 'forgot' && (
-            <button onClick={() => setMode('login')} style={{ background: 'none', border: 'none', color: 'var(--brand-light)', cursor: 'pointer', fontWeight: 600 }}>
-              ← Back to sign in
-            </button>
-          )}
-        </div>
+        <p style={{ color: '#aaa', fontSize: 12, marginTop: 28 }}>
+          New Covenant Church Songs
+        </p>
       </div>
+
+      <style>{`
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }
