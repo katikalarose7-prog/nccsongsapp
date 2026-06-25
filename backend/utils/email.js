@@ -50,10 +50,19 @@ async function send({ to, toName, subject, html }) {
         'content-type': 'application/json',
       },
       body: JSON.stringify({
-        sender:  { name: FROM_NAME, email: EMAIL_FROM },
-        to:      [{ email: to, name: toName || to }],
+        sender:      { name: FROM_NAME, email: EMAIL_FROM },
+        to:          [{ email: to, name: toName || to }],
+        replyTo:     { name: FROM_NAME, email: EMAIL_FROM },
         subject,
         htmlContent: html,
+        // Plain text fallback — emails without this are more likely
+        // to be flagged as spam by Gmail/Outlook content filters.
+        textContent: html.replace(/<[^>]+>/g, '').replace(/\s{2,}/g, ' ').trim(),
+        headers: {
+          // Mark as transactional so providers treat it as expected mail,
+          // not bulk/marketing which goes to Promotions/Spam tabs.
+          'X-Mailin-custom': 'transactional',
+        },
       }),
     });
 

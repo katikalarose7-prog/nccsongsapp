@@ -37,7 +37,7 @@ const publicUser = (u) => ({
 router.post('/register',
   [
     body('name').trim().isLength({ min: 2, max: 80 }).escape(),
-    body('email').isEmail().normalizeEmail(),
+    body('email').isEmail().normalizeEmail({ gmail_remove_dots: false, gmail_remove_subaddress: false, all_lowercase: true }),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   ],
   validate,
@@ -79,7 +79,7 @@ router.get('/verify-email', async (req, res) => {
 // POST /api/users/login
 router.post('/login',
   loginLimiter,
-  [body('email').isEmail().normalizeEmail(), body('password').notEmpty()],
+  [body('email').isEmail().normalizeEmail({ gmail_remove_dots: false, gmail_remove_subaddress: false, all_lowercase: true }), body('password').notEmpty()],
   validate,
   async (req, res) => {
     try {
@@ -120,7 +120,7 @@ router.post('/login',
 // POST /api/users/forgot-password
 router.post('/forgot-password',
   loginLimiter,
-  [body('email').isEmail().normalizeEmail()],
+  [body('email').isEmail().normalizeEmail({ gmail_remove_dots: false, gmail_remove_subaddress: false, all_lowercase: true })],
   validate,
   async (req, res) => {
     // Always return success, even if the email doesn't exist — avoids leaking
