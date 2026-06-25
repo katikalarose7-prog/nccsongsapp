@@ -43,12 +43,16 @@ if (isConfigured) {
   });
 
   // Verify connection on startup so we know immediately if SMTP is broken
-  transporter.verify((err) => {
+  transporter.verify((err, success) => {
+  console.log('VERIFY RESULT:', success);
+
   if (err) {
-    console.error('FULL SMTP ERROR:');
+    console.error('SMTP ERROR OBJECT:');
     console.error(err);
+    console.error('ERROR CODE:', err.code);
+    console.error('ERROR MESSAGE:', err.message);
   } else {
-    console.log('SMTP Ready');
+    console.log('✅ SMTP ready');
   }
 });
 }
