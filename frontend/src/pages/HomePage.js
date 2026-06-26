@@ -19,6 +19,33 @@ const GUEST_FAV_KEY  = 'ncc_guest_favourites';
 const getGuestFavs  = () => { try { return JSON.parse(localStorage.getItem(GUEST_FAV_KEY) || '[]'); } catch { return []; } };
 const saveGuestFavs = (ids) => localStorage.setItem(GUEST_FAV_KEY, JSON.stringify(ids));
 
+const BIBLE_VERSES = [
+  { text: "Sing to the LORD a new song; sing to the LORD, all the earth.", ref: "Psalm 96:1" },
+  { text: "Let everything that has breath praise the LORD. Praise the LORD!", ref: "Psalm 150:6" },
+  { text: "The LORD is my strength and my song; he has given me victory.", ref: "Exodus 15:2" },
+  { text: "Speak to one another with psalms, hymns, and songs from the Spirit.", ref: "Ephesians 5:19" },
+  { text: "Shout for joy to the LORD, all the earth. Worship the LORD with gladness.", ref: "Psalm 100:1-2" },
+  { text: "I will sing of the LORD's great love forever; with my mouth I will make your faithfulness known.", ref: "Psalm 89:1" },
+  { text: "He put a new song in my mouth, a hymn of praise to our God.", ref: "Psalm 40:3" },
+  { text: "Praise the LORD. How good it is to sing praises to our God, how pleasant and fitting to praise him!", ref: "Psalm 147:1" },
+  { text: "Come, let us sing for joy to the LORD; let us shout aloud to the Rock of our salvation.", ref: "Psalm 95:1" },
+  { text: "Let the message of Christ dwell among you richly as you teach and admonish one another with all wisdom through psalms, hymns, and songs from the Spirit.", ref: "Colossians 3:16" },
+  { text: "Is anyone happy? Let them sing songs of praise.", ref: "James 5:13" },
+  { text: "About midnight Paul and Silas were praying and singing hymns to God.", ref: "Acts 16:25" },
+  { text: "I will praise you, LORD, with all my heart; before the gods I will sing your praise.", ref: "Psalm 138:1" },
+  { text: "The LORD your God is with you, the Mighty Warrior who saves. He will take great delight in you; in his love he will no longer rebuke you, but will rejoice over you with singing.", ref: "Zephaniah 3:17" },
+  { text: "My heart, O God, is steadfast; I will sing and make music with all my soul.", ref: "Psalm 108:1" },
+  { text: "I will sing to the LORD all my life; I will sing praise to my God as long as I live.", ref: "Psalm 104:33" },
+  { text: "Praise him with timbrel and dancing, praise him with the strings and pipe.", ref: "Psalm 150:4" },
+  { text: "Enter his gates with thanksgiving and his courts with praise; give thanks to him and praise his name.", ref: "Psalm 100:4" },
+  { text: "Make a joyful noise to the LORD, all the earth; break forth into joyous song and sing praises!", ref: "Psalm 98:4" },
+  { text: "Glorify the LORD with me; let us exalt his name together.", ref: "Psalm 34:3" },
+];
+
+// Pick once per session (stable across re-renders)
+const SESSION_VERSE = BIBLE_VERSES[Math.floor(Math.random() * BIBLE_VERSES.length)];
+
+
 function useDebounce(value, delay) {
   const [dv, setDv] = useState(value);
   useEffect(() => {
@@ -46,20 +73,25 @@ function SkeletonGrid() {
 }
 
 // ── Ad Banner ─────────────────────────────────────────────────────
-/*function AdBanner() {
+function AdBanner() {
+    const { text, ref } = SESSION_VERSE;
   return (
     <div className="ad-banner">
-      <div>
-        <div className="ad-banner-label">Sponsored</div>
-        <div className="ad-banner-title">🙏 Support This Ministry</div>
-        <div className="ad-banner-sub">Your gift keeps NCC Songs free for all churches worldwide</div>
+      <div style={{ flex: 1 }}>
+        <div className="ad-banner-label">Verse of the Day</div>
+        <div className="ad-banner-title" style={{ fontStyle: 'italic', fontWeight: 400 }}>
+          "{text}"
+        </div>
+        <div className="ad-banner-sub" style={{ marginTop: 4, fontWeight: 600 }}>
+          — {ref}
+        </div>
       </div>
-      <a href="https://yourdonationlink.com" target="_blank" rel="noreferrer">
-        <button className="ad-banner-btn">Donate ❤️</button>
+      <a href="https://www.youtube.com/@newcovenantchurches" target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
+        <button className="ad-banner-btn">Watch ▶</button>
       </a>
     </div>
   );
-}*/
+}
 
 export default function HomePage() {
   const { user } = useUserAuth();
@@ -476,7 +508,7 @@ const totalPages = total ? Math.ceil(total / 18) : 1;
           role="dialog"
           aria-modal="true"
         >
-          <div className="modal">
+          <div className="modal" style={{ maxHeight: '92dvh', overflowY: 'auto', WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
             <button className="modal-close-btn" onClick={closeSong} aria-label="Close">
               <X size={15} />
             </button>

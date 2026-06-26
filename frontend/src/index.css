@@ -594,25 +594,3 @@ tr:hover td { background: var(--surface-1); }
   margin: 0 2px;
 }
 
-/* On desktop, filters wrap as before */
-@media (min-width: 641px) {
-  .filters-scroll { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 16px; }
-}
-@media (max-width: 768px) {
-  .modal {
-    display: flex;
-    flex-direction: column;
-    max-height: 92vh;
-  }
-
-  .modal-header { flex-shrink: 0; }
-  .modal-tabs   { flex-shrink: 0; }
-  .chords-panel { flex-shrink: 0; }
-
-  .modal-body {
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    padding: 16px 18px 24px;
-  }
-}
