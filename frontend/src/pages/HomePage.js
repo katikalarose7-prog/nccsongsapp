@@ -77,18 +77,22 @@ function AdBanner() {
     const { text, ref } = SESSION_VERSE;
   return (
     <div className="ad-banner">
-      <div style={{ flex: 1 }}>
-        <div className="ad-banner-label">Verse of the Day</div>
+      <div>
+        <div className="ad-banner-label" style={{textAlign:'center'}}>Verse of the Day</div>
         <div className="ad-banner-title" style={{ fontStyle: 'italic', fontWeight: 400 }}>
           "{text}"
         </div>
-        <div className="ad-banner-sub" style={{ marginTop: 4, fontWeight: 600 }}>
-          — {ref}
+        <div className="ad-banner-sub" style={{ marginTop: 4, fontWeight: 600, display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        width: "100%", }}>
+         <span>— {ref}</span> 
+          <a href="https://www.youtube.com/@newcovenantchurches" target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
+        <button className="ad-banner-btn">Visit Youtube ▶</button>
+      </a>
         </div>
       </div>
-      <a href="https://www.youtube.com/@newcovenantchurches" target="_blank" rel="noreferrer" style={{ flexShrink: 0 }}>
-        <button className="ad-banner-btn">Watch ▶</button>
-      </a>
+      
     </div>
   );
 }
