@@ -70,8 +70,12 @@ export default function HomePage() {
   const [cat, setCat]                 = useState('All');
   const [sort, setSort]               = useState('songNumber');
   const [page, setPage]               = useState(1);
-  const [data, setData]               = useState(null);
-  const [loading, setLoading]         = useState(true);
+const [data, setData] = useState({
+  songs: [],
+  page: 1,
+  pages: 1,
+  total: 0,
+});  const [loading, setLoading]         = useState(true);
   const [selected, setSelected]       = useState(null);
   const [detail, setDetail]           = useState(null);
   const [tab, setTab]                 = useState('english');
