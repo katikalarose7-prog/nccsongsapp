@@ -46,7 +46,7 @@ function SkeletonGrid() {
 }
 
 // ── Ad Banner ─────────────────────────────────────────────────────
-function AdBanner() {
+/*function AdBanner() {
   return (
     <div className="ad-banner">
       <div>
@@ -59,7 +59,7 @@ function AdBanner() {
       </a>
     </div>
   );
-}
+}*/
 
 export default function HomePage() {
   const { user } = useUserAuth();
