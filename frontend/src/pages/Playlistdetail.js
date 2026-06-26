@@ -50,8 +50,9 @@ export default function PlaylistDetail() {
       <header className="header">
         <div className="header-inner">
           <Link to="/account" className="header-logo">
-            <div className="header-logo-icon">✝</div>
-            <div>
+<div>
+          <img src="/icons/icon-192.png" alt="NCC" className="header-logo-icon" style={{borderRadius:'50%', objectFit:'cover'}} />
+</div>            <div>
               <span className="header-logo-name">{playlist.name}</span>
               <span className="header-logo-sub">{playlist.songs.length} songs</span>
             </div>

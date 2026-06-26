@@ -15,11 +15,9 @@ export default function Footer() {
       }}>
         <div style={{ maxWidth: 280 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <div style={{
-              width: 32, height: 32, borderRadius: 9,
-              background: 'linear-gradient(135deg, var(--brand-gold), #e09600)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15,
-            }}>✝</div>
+            <div>
+          <img src="/icons/icon-192.png" alt="NCC" className="header-logo-icon" style={{borderRadius:'50%', objectFit:'cover'}} />
+</div>
             <span style={{ color: '#fff', fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15 }}>
               New Covenant Church
             </span>
