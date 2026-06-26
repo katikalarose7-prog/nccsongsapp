@@ -42,7 +42,8 @@ export default function ResetPassword() {
             width: 56, height: 56, background: 'linear-gradient(135deg,#f0a500,#f59e0b)',
             borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 26, margin: '0 auto 14px',
-          }}>🔒</div>
+          }}>          <img src="/icons/icon-192.png" alt="NCC" className="header-logo-icon" style={{borderRadius:'50%', objectFit:'cover'}} />
+</div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 22, fontWeight: 700, color: 'var(--brand-deep)' }}>
             Set a new password
           </h1>

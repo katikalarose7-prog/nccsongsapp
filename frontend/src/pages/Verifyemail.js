@@ -40,7 +40,8 @@ export default function VerifyEmail() {
           width: 64, height: 64, background: 'linear-gradient(135deg,#f0a500,#f59e0b)',
           borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: 30, margin: '0 auto 20px', boxShadow: '0 4px 16px rgba(240,165,0,0.4)',
-        }}>✝</div>
+        }}>            <img src="/icons/icon-192.png" alt="NCC" className="header-logo-icon" style={{borderRadius:'50%', objectFit:'cover'}} />
+</div>
 
         {status === 'checking' && (
           <>
