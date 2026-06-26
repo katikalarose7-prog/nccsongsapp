@@ -254,73 +254,100 @@ const totalPages = total ? Math.ceil(total / 18) : 1;
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       {/* ── HEADER ──────────────────────────────────────────────── */}
       <header className="header">
-        <div className="header-inner">
-          <Link to="/" className="header-logo" onClick={() => { setQuery(''); setShowFavs(false); }}>
-            <img src="/icons/icon-192.png" alt="NCC" className="header-logo-icon" style={{borderRadius:'50%', objectFit:'cover'}} />
-            <div>
-              <span className="header-logo-name">New Covenant Church</span>
-              <span className="header-logo-sub">Songs Collection</span>
-            </div>
-          </Link>
+  <div className="header-inner">
 
-          <div className="search-wrap">
-            <Search size={15} className="search-icon" />
-            <input
-              ref={searchRef}
-              className="search-input"
-              style={{ paddingRight: 64 }}
-              placeholder="Search songs, lyrics, category, language…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              aria-label="Search songs"
-            />
-            <div style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 2 }}>
-              {query && (
-                <button className="search-clear" style={{ position: 'static' }} onClick={() => { setQuery(''); searchRef.current?.focus(); }}>
-                  <X size={14} />
-                </button>
-              )}
-              <VoiceSearchButton onResult={handleVoiceResult} />
-            </div>
-          </div>
+    {/* Logo — truncates gracefully on small screens */}
+    <Link to="/" className="header-logo" onClick={() => { setQuery(''); setShowFavs(false); }}>
+      <img src="/icons/icon-192.png" alt="NCC" className="header-logo-icon"
+        style={{ borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+      <div style={{ minWidth: 0 }}>
+        <span className="header-logo-name">New Covenant Church</span>
+        <span className="header-logo-sub">Songs Collection</span>
+      </div>
+    </Link>
 
-          <div className="header-actions">
-            <button
-              onClick={() => { setShowFavs(v => !v); setQuery(''); }}
-              className="btn"
-              style={{
-                background: showFavs ? '#ef4444' : 'rgba(255,255,255,0.12)',
-                color: '#fff', border: '1.5px solid rgba(255,255,255,0.2)',
-                position: 'relative', padding: '8px 14px',
-              }}
-              title="My Favourites"
-            >
-              <Heart size={15} fill={showFavs ? '#fff' : 'none'} />
-              {!showFavs && <span style={{ fontSize: 13 }}>Favourites</span>}
-              {favs.length > 0 && (
-                <span style={{
-                  position: 'absolute', top: -7, right: -7,
-                  background: '#ef4444', color: '#fff', borderRadius: '50%',
-                  width: 19, height: 19, fontSize: 10, fontWeight: 700,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '2px solid var(--brand-deep)',
-                }}>{favs.length}</span>
-              )}
-            </button>
+    {/* Search — hidden on mobile, shown via search icon row below */}
+    <div className="search-wrap header-search-desktop">
+      <Search size={15} className="search-icon" />
+      <input
+        ref={searchRef}
+        className="search-input"
+        style={{ paddingRight: 64 }}
+        placeholder="Search songs, lyrics, category, language…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        aria-label="Search songs"
+      />
+      <div style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 2 }}>
+        {query && (
+          <button className="search-clear" style={{ position: 'static' }} onClick={() => { setQuery(''); searchRef.current?.focus(); }}>
+            <X size={14} />
+          </button>
+        )}
+        <VoiceSearchButton onResult={handleVoiceResult} />
+      </div>
+    </div>
 
-            <InstallAppButton />
+    {/* Actions */}
+    <div className="header-actions">
+      <button
+        onClick={() => { setShowFavs(v => !v); setQuery(''); }}
+        className="btn header-fav-btn"
+        style={{
+          background: showFavs ? '#ef4444' : 'rgba(255,255,255,0.12)',
+          color: '#fff', border: '1.5px solid rgba(255,255,255,0.2)',
+          position: 'relative', padding: '8px 14px',
+        }}
+        title="My Favourites"
+      >
+        <Heart size={15} fill={showFavs ? '#fff' : 'none'} />
+        <span className="fav-label">Favourites</span>
+        {favs.length > 0 && (
+          <span style={{
+            position: 'absolute', top: -7, right: -7,
+            background: '#ef4444', color: '#fff', borderRadius: '50%',
+            width: 19, height: 19, fontSize: 10, fontWeight: 700,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: '2px solid var(--brand-deep)',
+          }}>{favs.length}</span>
+        )}
+      </button>
 
-            {/* Admin login intentionally removed from header — it now lives only in the footer. */}
-            {user ? (
-              <AccountMenu />
-            ) : (
-              <Link to="/login" className="btn btn-gold">
-                <LogIn size={14} /> Sign In
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
+      <InstallAppButton />
+
+      {user ? (
+        <AccountMenu />
+      ) : (
+        <Link to="/login" className="btn btn-gold">
+          <LogIn size={14} /> <span className="signin-label">Sign In</span>
+        </Link>
+      )}
+    </div>
+  </div>
+
+  {/* Mobile-only search row */}
+  <div className="header-search-mobile">
+    <div className="search-wrap" style={{ margin: 0 }}>
+      <Search size={15} className="search-icon" />
+      <input
+        className="search-input"
+        style={{ paddingRight: 64 }}
+        placeholder="Search songs, lyrics…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        aria-label="Search songs"
+      />
+      <div style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 2 }}>
+        {query && (
+          <button className="search-clear" style={{ position: 'static' }} onClick={() => { setQuery(''); }}>
+            <X size={14} />
+          </button>
+        )}
+        <VoiceSearchButton onResult={handleVoiceResult} />
+      </div>
+    </div>
+  </div>
+</header>
 
       <div style={{ flex: 1 }}>
         {/* ── FAVOURITES PANEL ────────────────────────────────────── */}
@@ -375,25 +402,28 @@ const totalPages = total ? Math.ceil(total / 18) : 1;
 
             {/* ── FILTERS ─────────────────────────────────────────── */}
             <div className="filters">
-              <span className="filter-label">Lang</span>
-              {LANGUAGES.map(l => (
-                <button key={l} className={`filter-chip ${lang === l ? 'active' : ''}`} onClick={() => setLang(l)}>{l}</button>
-              ))}
-              <span className="filter-label" style={{ marginLeft: 6 }}>Cat</span>
-              {CATEGORIES.map(c => (
-                <button key={c} className={`filter-chip ${cat === c ? 'active' : ''}`} onClick={() => setCat(c)}>{c}</button>
-              ))}
-              <select className="filter-sort" value={sort} onChange={e => setSort(e.target.value)}>
-                <option value="songNumber">By No.</option>
-                <option value="title">A–Z</option>
-                <option value="newest">Newest</option>
-              </select>
-              {data && !loading && (
-                <span className="filter-count">
-  {data?.total || 0} song{(data?.total || 0) !== 1 ? 's' : ''}
-                  </span>
-              )}
-            </div>
+  <div className="filters-scroll">
+    <span className="filter-label">Lang</span>
+    {LANGUAGES.map(l => (
+      <button key={l} className={`filter-chip ${lang === l ? 'active' : ''}`} onClick={() => setLang(l)}>{l}</button>
+    ))}
+    <span className="filter-divider" />
+    <span className="filter-label">Cat</span>
+    {CATEGORIES.map(c => (
+      <button key={c} className={`filter-chip ${cat === c ? 'active' : ''}`} onClick={() => setCat(c)}>{c}</button>
+    ))}
+    <select className="filter-sort" value={sort} onChange={e => setSort(e.target.value)}>
+      <option value="songNumber">By No.</option>
+      <option value="title">A–Z</option>
+      <option value="newest">Newest</option>
+    </select>
+    {data && !loading && (
+      <span className="filter-count">
+        {data?.total || 0} song{(data?.total || 0) !== 1 ? 's' : ''}
+      </span>
+    )}
+  </div>
+</div>
 
             {/* ── SONGS GRID ──────────────────────────────────────── */}
             <section className="songs-section">

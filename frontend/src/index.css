@@ -550,3 +550,51 @@ tr:hover td { background: var(--surface-1); }
   .btn:active { opacity: 0.85; }
   .filter-chip:active { opacity: 0.8; }
 }
+/* Mobile header search rows */
+.header-search-mobile {
+  display: none;
+  padding: 0 12px 10px;
+}
+.header-search-desktop {
+  display: flex;
+}
+
+/* Hide text labels on small screens */
+@media (max-width: 640px) {
+  .header-search-mobile  { display: block; }
+  .header-search-desktop { display: none !important; }
+
+  .fav-label    { display: none; }
+  .signin-label { display: none; }
+
+  /* Tighter logo */
+  .header-logo-name { font-size: 13px; }
+  .header-logo-sub  { font-size: 10px; }
+  .header-logo-icon { width: 30px; height: 30px; }
+
+  /* Compact action buttons */
+  .header-fav-btn { padding: 7px 10px !important; }
+  .btn-gold       { padding: 7px 10px !important; }
+
+  /* Filters scroll horizontally without wrapping */
+  .filters        { padding: 0; }
+  .filters-scroll { display: flex; align-items: center; gap: 6px;
+                    overflow-x: auto; scrollbar-width: none;
+                    padding: 8px 12px; -webkit-overflow-scrolling: touch; }
+  .filters-scroll::-webkit-scrollbar { display: none; }
+}
+
+/* Filter divider between Lang and Cat */
+.filter-divider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: var(--border-strong, rgba(255,255,255,0.2));
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+/* On desktop, filters wrap as before */
+@media (min-width: 641px) {
+  .filters-scroll { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 16px; }
+}
