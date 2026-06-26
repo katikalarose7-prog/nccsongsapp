@@ -71,7 +71,7 @@ export function Contact() {
     <LegalLayout title="Contact Us">
       <p>For questions, feedback, or song requests, reach out to the church office:</p>
       <p style={{ marginTop: 12 }}>
-        📧 Email: <a href="mailto:hello@nccsongs.church" style={{ color: 'var(--brand-light)' }}>hello@nccsongs.church</a><br />
+        📧 Email: <a href="mailto:nccsongs.churchapp@gmail.com" style={{ color: 'var(--brand-light)' }}>hello@nccsongs.church</a><br />
         📍 New Covenant Church — Andhra Pradesh, India
       </p>
     </LegalLayout>

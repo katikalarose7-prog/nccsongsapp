@@ -429,7 +429,7 @@ const totalPages = total ? Math.ceil(total / 18) : 1;
                 <h1>Sing unto the <span>Lord</span> a new song</h1>
                 <p>Search and sing along — English, Telugu &amp; Hindi worship songs</p>
                 <div className="hero-langs">
-                  {['🇬🇧 English', '🇮🇳 తెలుగు', '🕌 हिन्दी'].map(l => (
+                  {['English', 'తెలుగు', 'हिन्दी'].map(l => (
                     <span key={l} className="hero-lang-pill">{l}</span>
                   ))}
                 </div>
