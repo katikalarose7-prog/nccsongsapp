@@ -70,12 +70,7 @@ export default function HomePage() {
   const [cat, setCat]                 = useState('All');
   const [sort, setSort]               = useState('songNumber');
   const [page, setPage]               = useState(1);
-const [data, setData] = useState({
-  songs: [],
-  page: 1,
-  pages: 1,
-  total: 0,
-});
+  const [data, setData]               = useState(null);
   const [loading, setLoading]         = useState(true);
   const [selected, setSelected]       = useState(null);
   const [detail, setDetail]           = useState(null);
@@ -110,15 +105,7 @@ const [data, setData] = useState({
       const res = await fetchSongs(params);
 const normalized = Array.isArray(res) ? { songs: res, total: res.length } : res;
 setData(normalized);
-    } catch (e) { console.error(e);
-
-  setData({
-    songs: [],
-    page: 1,
-    pages: 1,
-    total: 0,
-  })
-     }
+    } catch (e) { console.error(e); setData({ songs: [], total: 0 }); }
     finally { setLoading(false); }
   }, [dq, lang, cat, sort, page]);
 
@@ -265,7 +252,7 @@ const totalPages = total ? Math.ceil(total / 18) : 1;
       <header className="header">
         <div className="header-inner">
           <Link to="/" className="header-logo" onClick={() => { setQuery(''); setShowFavs(false); }}>
-            <div className="header-logo-icon">✝</div>
+            <img src="/icons/icon-192.png" alt="NCC" className="header-logo-icon" style={{borderRadius:'50%', objectFit:'cover'}} />
             <div>
               <span className="header-logo-name">New Covenant Church</span>
               <span className="header-logo-sub">Songs Collection</span>
@@ -410,7 +397,7 @@ const totalPages = total ? Math.ceil(total / 18) : 1;
                 <AdBanner />
                 {loading ? (
                   <SkeletonGrid />
-                ) : data?.songs?.length === 0 ? (
+                ) : !data?.songs?.length ? (
                   <div className="empty">
                     <div className="empty-icon"><Music size={48} /></div>
                     <h3>No songs found</h3>

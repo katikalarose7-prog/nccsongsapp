@@ -3,43 +3,61 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+  <!-- ── SEO ── -->
+  <title>NCC Songs — New Covenant Church Full Gospel</title>
+  <meta name="description" content="Worship songs in English, Telugu and Hindi for New Covenant Church Full Gospel. Search lyrics, build playlists, and sing along on any device." />
+  <meta name="keywords" content="NCC Songs, New Covenant Church, worship songs, telugu christian songs, hindi worship, full gospel, church songs" />
+  <meta name="author" content="New Covenant Church Full Gospel" />
+  <meta name="robots" content="index, follow" />
+
+  <!-- ── Open Graph (WhatsApp, Facebook previews) ── -->
+  <meta property="og:type"        content="website" />
+  <meta property="og:url"         content="https://nccsongsapp.vercel.app/" />
+  <meta property="og:title"       content="NCC Songs — New Covenant Church Full Gospel" />
+  <meta property="og:description" content="Worship songs in English, Telugu and Hindi. Search, save favourites, build playlists." />
+  <meta property="og:image"       content="https://nccsongsapp.vercel.app/icons/icon-512.png" />
+  <meta property="og:image:width"  content="512" />
+  <meta property="og:image:height" content="512" />
+  <meta property="og:locale"      content="en_IN" />
+  <meta property="og:site_name"   content="NCC Songs" />
+
+  <!-- ── Twitter / X Card ── -->
+  <meta name="twitter:card"        content="summary" />
+  <meta name="twitter:title"       content="NCC Songs — New Covenant Church" />
+  <meta name="twitter:description" content="Worship songs in English, Telugu and Hindi." />
+  <meta name="twitter:image"       content="https://nccsongsapp.vercel.app/icons/icon-512.png" />
+
+  <!-- ── Theme ── -->
   <meta name="theme-color" content="#1a0533" />
-  <meta name="description" content="New Covenant Church — Song Collection in English, Telugu and Hindi" />
-  <title>NCC Songs — New Covenant Church</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 
-  <!-- ── PWA: Android "Install App" + general installability ── -->
+  <!-- ── Favicons ── -->
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png" />
+  <link rel="shortcut icon" href="/favicon-32.png" />
+
+  <!-- ── PWA Manifest ── -->
   <link rel="manifest" href="/manifest.json" />
-  <link rel="icon" href="/icons/icon-192.png" />
 
-  <!-- ── PWA: iOS "Add to Home Screen" support ──
-       iOS does not read manifest.json the same way Android does, so these
-       Apple-specific tags are required for the icon, status bar style, and
-       full-screen (no Safari UI) behaviour to work when added to Home Screen. -->
+  <!-- ── PWA: iOS / Android ── -->
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="NCC Songs" />
-  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
 
-  <!-- ✅ Google AdSense — replace ca-pub-XXXXXXXXXXXXXXXX with your Publisher ID -->
-  <!-- Uncomment the line below once you have your AdSense account approved -->
-  <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script> -->
-
-  <style>
-    @keyframes slideUp {
-      from { opacity: 0; transform: translateY(24px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-  </style>
+  <!-- ── Fonts ── -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@400;600&family=Noto+Sans+Devanagari:wght@400;600&display=swap" rel="stylesheet" />
 </head>
 <body>
-  <noscript>Please enable JavaScript to use this app.</noscript>
+  <noscript>Please enable JavaScript to use NCC Songs.</noscript>
   <div id="root"></div>
 
   <script>
-    // Register the service worker — required for Android's install prompt.
-    // Safe no-op on browsers without support (older Safari, etc).
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/service-worker.js').catch(() => {});

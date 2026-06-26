@@ -23,6 +23,9 @@ const EMAIL_FROM    = process.env.EMAIL_FROM || 'noreply@nccsongs.church';
 const FROM_NAME     = 'NCC Songs';
 const APP_URL       = process.env.APP_URL || 'https://nccsongsapp.vercel.app';
 
+// Real NCC logo hosted on Vercel — shown in every email header
+const LOGO_URL = `${APP_URL}/icons/icon-192.png`;
+
 const isConfigured = Boolean(BREVO_API_KEY);
 
 if (!isConfigured) {
@@ -81,6 +84,13 @@ async function send({ to, toName, subject, html }) {
   }
 }
 
+
+/* ── Shared email wrapper with real NCC logo ──────────────────────
+   Button style: white text, blue (#1a5fb4) background — consistent
+   across all email types (verify, reset, new song, bulk songs). */
+const btn = (href, label) =>
+  `<a href="${href}" style="display:inline-block;background:#1a5fb4;color:#ffffff;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;letter-spacing:0.3px;margin:20px 0">${label}</a>`;
+
 /* ── Shared HTML wrapper ─────────────────────────────────────── */
 const emailWrap = (body) => `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -107,7 +117,9 @@ const emailWrap = (body) => `<!DOCTYPE html>
 </head>
 <body><div class="outer"><div class="card">
 <div class="header">
-  <div class="logo">✝</div>
+<img src="${LOGO_URL}" width="80" height="80"
+       style="border-radius:50%;border:3px solid #ffffff;background:#ffffff;display:block;margin:0 auto 14px"
+       alt="New Covenant Church Logo" />
   <h1>New Covenant Church</h1>
   <p>NCC Songs — Worship &amp; Praise</p>
 </div>

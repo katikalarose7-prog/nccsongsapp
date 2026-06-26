@@ -438,21 +438,115 @@ tr:hover td { background: var(--surface-1); }
 .dropzone small { color: var(--text-muted); font-size: 13px; }
 
 /* ── Responsive ───────────────────────────────────────────────────── */
+
+/* ═══════════════════════════════════════════════════════════════
+   COMPREHENSIVE MOBILE RESPONSIVENESS
+   All web features available on mobile — search, filters, modal,
+   playlists, favourites, voice search, share, account dropdown.
+   ═══════════════════════════════════════════════════════════════ */
+
 @media (max-width: 768px) {
-  .header-logo-name { font-size: 14px; }
+  /* Header */
+  .header-inner {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 14px;
+  }
+  .header-logo { flex: 1; min-width: 0; }
+  .header-logo-name { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .header-logo-sub  { display: none; }
-  .songs-grid { grid-template-columns: 1fr; }
+  .search-wrap {
+    order: 3;
+    width: 100%;
+    max-width: 100%;
+    flex: none;
+  }
+  .header-actions { gap: 6px; }
+  .header-actions .btn { padding: 7px 10px; font-size: 12px; }
+
+  /* Song grid */
+  .songs-grid { grid-template-columns: 1fr; gap: 10px; }
+  .songs-section { padding: 12px 0 60px; }
+
+  /* Filters — horizontal scroll on mobile */
+  .filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 8px 12px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    top: auto;
+    position: relative;
+  }
+  .filters::-webkit-scrollbar { display: none; }
+  .filter-chip { white-space: nowrap; flex-shrink: 0; }
+
+  /* Modal — full screen on mobile */
+  .modal-overlay { padding: 0; align-items: flex-end; }
+  .modal {
+    border-radius: 24px 24px 0 0;
+    max-height: 92vh;
+    width: 100%;
+    max-width: 100%;
+  }
+  .modal-header { padding: 22px 18px 16px; }
+  .modal-header h2 { font-size: 18px; padding-right: 40px; }
+  .modal-action-row {
+    gap: 7px;
+    flex-wrap: wrap;
+  }
+  .modal-action-row .btn,
+  .modal-action-row a.btn { font-size: 12px; padding: 7px 11px; }
+  .modal-body { padding: 16px 18px 24px; }
+  .modal-tabs { padding: 0 18px; }
+
+  /* Lyrics */
+  .lyrics-block { font-size: 14px; line-height: 1.8; }
+  .lyrics-block.telugu,
+  .lyrics-block.hindi  { font-size: 15px; }
+
+  /* Hero */
+  .hero { padding: 28px 16px 36px; }
+  .hero h1 { font-size: 22px; }
+  .hero p  { font-size: 13px; }
+
+  /* Account / form pages */
   .form-grid  { grid-template-columns: 1fr; }
   .admin-sidebar { display: none; }
-  .admin-main { margin-left: 0; padding: 16px; }
-  .filters { padding: 8px 12px; top: 62px; }
-  .songs-section { padding: 16px 0 60px; }
-  .hero { padding: 36px 16px 44px; }
-  .modal-overlay { padding: 10px; }
-  .modal-header h2 { font-size: 19px; }
+  .admin-main { margin-left: 0; padding: 14px; }
+
+  /* Song card */
+  .song-card { padding: 14px; }
+  .song-title { font-size: 15px; }
+
+  /* Pagination */
+  .pagination { gap: 4px; flex-wrap: wrap; justify-content: center; }
+  .page-btn { min-width: 34px; height: 34px; font-size: 13px; }
+
+  /* Chords panel */
+  .chords-panel { padding: 12px 18px; }
+
+  /* Footer */
+  footer .container { flex-direction: column; gap: 20px; }
 }
+
 @media (max-width: 480px) {
-  .filter-chip { padding: 4px 10px; font-size: 12px; }
-  .header-inner { gap: 10px; padding: 10px 14px; }
+  .header-inner { padding: 8px 12px; gap: 6px; }
+  .header-logo-icon { width: 34px; height: 34px; font-size: 16px; border-radius: 9px; }
+  .header-logo-name { font-size: 12px; }
   .search-input { font-size: 13px; }
+  .filter-chip { padding: 4px 9px; font-size: 11px; }
+  .hero h1 { font-size: 20px; }
+  .song-title { font-size: 14px; }
+  .modal-header h2 { font-size: 16px; }
+  .btn { font-size: 12px; padding: 7px 12px; }
+  /* Stack action buttons vertically if very small */
+  .modal-action-row { gap: 6px; }
+}
+
+/* ── Touch improvements ── */
+@media (hover: none) and (pointer: coarse) {
+  .song-card:active { transform: scale(0.98); }
+  .btn:active { opacity: 0.85; }
+  .filter-chip:active { opacity: 0.8; }
 }
