@@ -112,12 +112,18 @@ export const updatePlaylist      = (id, data)       => API.put(`/playlists/${id}
 export const deletePlaylist      = (id)             => API.delete(`/playlists/${id}`).then(r => r.data);
 export const addSongToPlaylist   = (id, songId)     => API.post(`/playlists/${id}/songs`, { songId }).then(r => r.data);
 export const removeSongFromPlaylist = (id, songId)  => API.delete(`/playlists/${id}/songs/${songId}`).then(r => r.data);
-export const downloadPlaylistPdf = (id, name) =>
-  API.get(`/playlists/${id}/pdf`, { responseType: 'blob' }).then(r => {
-    const url = window.URL.createObjectURL(new Blob([r.data], { type: 'application/pdf' }));
-    const a = document.createElement('a');
-    a.href = url; a.download = `${name || 'playlist'}.pdf`; a.click();
-  });
+export const downloadPlaylistPdf = (id, name) => {
+  // Opens a print-ready HTML page in a new tab.
+  // The page loads Telugu/Hindi fonts from Google Fonts (already in the
+  // browser's font cache from using the app) and shows a Print button.
+  // User clicks Print / Ctrl+P and saves as PDF — Telugu renders perfectly
+  // because the browser's own font engine handles the script shaping.
+  const token = localStorage.getItem('ncc_user_token');
+  const base  = (process.env.REACT_APP_API_URL || '/api').replace(/\/api\/?$/, '');
+  const url   = `${base}/api/playlists/${id}/pdf`;
+  // Pass auth token as query param since we can't set headers on window.open
+  window.open(`${url}?token=${token}`, '_blank');
+};
 
 /* ── Audio file upload (admin only) ───────────────────────────────── */
 export const uploadAudio = (file, onProgress) => {
