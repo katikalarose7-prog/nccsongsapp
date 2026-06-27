@@ -294,13 +294,14 @@ router.get('/:id/pdf',
       margin-bottom: 36px;
     }
     .doc-eyebrow {
-      font-size: 10px; font-weight: 600;
+      font-size: 21px; font-weight: 600;
       letter-spacing: 0.14em; text-transform: uppercase;
-      color: var(--gold); margin-bottom: 10px;
+      color: #172d7cbf; margin-bottom: 10px;
+      text-align:'center';
     }
     .doc-title {
       font-family: 'Lora', Georgia, serif;
-      font-size: 30px; font-weight: 700;
+      font-size: 20px; font-weight: 700;
       color: var(--navy); line-height: 1.2;
       margin-bottom: 8px;
     }
@@ -315,7 +316,7 @@ router.get('/:id/pdf',
     }
     .doc-meta {
       font-size: 11.5px; color: var(--muted);
-      display: flex; gap: 18px; flex-wrap: wrap;
+      display: flex; gap: 146px; flex-wrap: wrap;justify-content:center;
     }
     .doc-meta span { display: flex; align-items: center; gap: 5px; }
 
@@ -477,7 +478,8 @@ router.get('/:id/pdf',
 <div class="page" id="pdfContent">
 
   <div class="doc-header">
-    <div class="doc-eyebrow">New Covenant Church · Full Gospel</div>
+    <div class="doc-eyebrow">New Covenant Church</div>
+    <div class="doc-eyebrow">Full Gospel</div>
     <div class="doc-title">${esc(playlist.name)}</div>
     ${playlist.description ? `<div class="doc-desc">${esc(playlist.description)}</div>` : ''}
     <div class="doc-rule"></div>
