@@ -229,7 +229,7 @@ router.get('/:id/pdf-download',
   async (req, res) => {
     let browser;
     try {
-      const { chromium: playwrightChromium } = require('playwright');
+      const { chromium: pwChromium  } = require('playwright');
 
 
       await req.playlist.populate('songs.song');
@@ -581,9 +581,8 @@ router.get('/:id/pdf-download',
 </html>`;
 
      // REPLACE WITH:
-const { chromium: playwrightChromium } = require('playwright');
 
-browser = await playwrightChromium.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+browser = await pwChromium .launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
 const page = await browser.newPage();
 await page.setContent(html, { waitUntil: 'networkidle0' });
 const pdfBuffer = await page.pdf({
