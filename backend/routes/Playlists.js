@@ -442,7 +442,8 @@ router.get('/:id/pdf', async (req, res, next) => {
 
     <!-- Document header -->
     <div class="doc-header">
-      <div class="church-name">New Covenant Church · Full Gospel</div>
+      <div class="church-name">New Covenant Church</div>
+      <div class="church-name">Full Gospel</div>
       <h1>${esc(playlist.name)}</h1>
       ${playlist.description ? `<div class="desc">${esc(playlist.description)}</div>` : ''}
       <div class="meta">
