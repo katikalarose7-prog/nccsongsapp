@@ -297,7 +297,7 @@ router.get('/:id/pdf',
       font-size: 21px; font-weight: 600;
       letter-spacing: 0.14em; text-transform: uppercase;
       color: #172d7cbf; margin-bottom: 10px;
-      text-align:'center';
+      text-align:center;
     }
     .doc-title {
       font-family: 'Lora', Georgia, serif;
