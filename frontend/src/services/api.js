@@ -21,7 +21,7 @@ API.interceptors.request.use((config) => {
     ? localStorage.getItem(ADMIN_TOKEN_KEY)
     : isUserRoute
       ? localStorage.getItem(USER_TOKEN_KEY)
-      : (localStorage.getItem(USER_TOKEN_KEY) || null); // optional-auth GET routes prefer user token if present
+      : (localStorage.getItem(USER_TOKEN_KEY) || null);
 
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
@@ -54,12 +54,10 @@ const cached = async (key, fn) => {
 
 /* ── Songs ─────────────────────────────────────────────────────── */
 export const fetchSongs = (params) => {
-  cache.clear(); // temporary — remove after fix confirmed
+  cache.clear();
   const key = JSON.stringify(params);
   return cached(key, () => API.get('/songs', { params }).then(r => r.data));
 };
-
-
 
 export const fetchSong         = (id)       => API.get(`/songs/${id}`).then(r => r.data);
 export const fetchRecommended  = ()         => API.get('/songs/recommendations').then(r => r.data);
@@ -112,6 +110,8 @@ export const updatePlaylist      = (id, data)       => API.put(`/playlists/${id}
 export const deletePlaylist      = (id)             => API.delete(`/playlists/${id}`).then(r => r.data);
 export const addSongToPlaylist   = (id, songId)     => API.post(`/playlists/${id}/songs`, { songId }).then(r => r.data);
 export const removeSongFromPlaylist = (id, songId)  => API.delete(`/playlists/${id}/songs/${songId}`).then(r => r.data);
+
+/* ── Download playlist as PDF (direct file download, no print dialog) ── */
 export const downloadPlaylistPdf = async (id, name) => {
   const token = localStorage.getItem('ncc_user_token');
   const base  = (process.env.REACT_APP_API_URL || '/api').replace(/\/api\/?$/, '');
@@ -128,9 +128,11 @@ export const downloadPlaylistPdf = async (id, name) => {
 
   const blob = await res.blob();
   const link = document.createElement('a');
-  link.href  = URL.createObjectURL(blob);
+  link.href     = URL.createObjectURL(blob);
   link.download = `${name || 'playlist'}.pdf`;
+  document.body.appendChild(link);
   link.click();
+  document.body.removeChild(link);
   URL.revokeObjectURL(link.href);
 };
 

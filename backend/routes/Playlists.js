@@ -110,19 +110,103 @@ router.delete('/:id/songs/:songId', requireUser, loadOwnedPlaylist, async (req, 
 /* ── GET /api/playlists/:id/pdf ─────────────────────────────────────
    Returns a print-ready HTML page in a new browser tab.
    The user clicks "Print / Save as PDF" to save it.
-
-   Why HTML instead of PDFKit:
-   - Browser already has Telugu/Hindi fonts — same ones rendering lyrics now
-   - PDFKit cannot shape complex scripts (Telugu conjuncts, Devanagari)
-   - Zero extra packages or font files on the server
-   - CSP-safe: all JS uses a per-request nonce, no inline handlers
    ─────────────────────────────────────────────────────────────────── */
+router.get('/:id/pdf',
+  async (req, res, next) => {
+    const jwt  = require('jsonwebtoken');
+    const User = require('../models/User');
+    let token = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.split(' ')[1];
+    } else if (req.query.token) {
+      token = req.query.token;
+    }
+    if (!token) return res.status(401).send('<h2 style="font-family:sans-serif;padding:40px">Not authenticated. Please log in.</h2>');
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      if (decoded.type !== 'user') return res.status(403).send('<h2 style="font-family:sans-serif;padding:40px">Access denied.</h2>');
+      const user = await User.findById(decoded.id);
+      if (!user || !user.isActive) return res.status(401).send('<h2 style="font-family:sans-serif;padding:40px">Account not found.</h2>');
+      req.user = user;
+      next();
+    } catch {
+      return res.status(401).send('<h2 style="font-family:sans-serif;padding:40px">Session expired — please log in again.</h2>');
+    }
+  },
+  loadOwnedPlaylist,
+  async (req, res) => {
+    await req.playlist.populate('songs.song');
+    const playlist = req.playlist;
+
+    const nonce = crypto.randomBytes(16).toString('base64');
+
+    res.setHeader('Content-Security-Policy',
+      `default-src 'self'; ` +
+      `script-src 'nonce-${nonce}'; ` +
+      `style-src 'unsafe-inline' https://fonts.googleapis.com; ` +
+      `font-src https://fonts.gstatic.com; ` +
+      `img-src 'self' data: https:; ` +
+      `connect-src 'none'`
+    );
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+
+    const date = new Date().toLocaleDateString('en-IN', {
+      day: 'numeric', month: 'long', year: 'numeric'
+    });
+
+    const esc = (str) => (str || '')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    const songsHtml = playlist.songs
+      .filter(e => e.song)
+      .map((entry, i) => {
+        const s = entry.song;
+        const variants = [
+          { lang: 'english',  label: 'English',  cssClass: '',        title: s.title,       lyrics: s.lyrics       },
+          { lang: 'telugu',   label: 'తెలుగు',   cssClass: 'telugu',  title: s.titleTelugu, lyrics: s.lyricsTelugu },
+          { lang: 'hindi',    label: 'हिन्दी',    cssClass: 'hindi',   title: s.titleHindi,  lyrics: s.lyricsHindi  },
+        ].filter(v => v.lyrics && v.lyrics.trim());
+        const multiLang = variants.length > 1;
+        const lyricBlocks = variants.map(v => `
+          <div class="lyric-block">
+            ${multiLang ? `<div class="lang-pill ${v.cssClass}-pill">${v.label}</div>` : ''}
+            <pre class="lyrics ${v.cssClass}">${esc(v.lyrics)}</pre>
+          </div>`).join('');
+        const altTitles = [
+          s.titleTelugu ? `<div class="title-telugu">${esc(s.titleTelugu)}</div>` : '',
+          s.titleHindi  ? `<div class="title-hindi">${esc(s.titleHindi)}</div>`   : '',
+        ].join('');
+        const meta = [s.category, s.language, s.key ? `Key: ${s.key}` : '', s.tempo || '']
+          .filter(Boolean).join(' · ');
+        return `
+          <div class="song-card">
+            <div class="song-header">
+              <div class="song-num">${String(i + 1).padStart(2, '0')}</div>
+              <div class="song-title-wrap">
+                <div class="song-title">${esc(s.title)}${s.songNumber ? ` <span class="song-badge">No.${s.songNumber}</span>` : ''}</div>
+                ${altTitles}
+                <div class="song-meta">${esc(meta)}</div>
+              </div>
+            </div>
+            <div class="song-lyrics">
+              ${lyricBlocks || '<p class="no-lyrics">(No lyrics)</p>'}
+            </div>
+          </div>`;
+      }).join('\n');
+
+    const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<title>${esc(playlist.name)} — NCC Songs</title></head><body>${songsHtml}</body></html>`;
+    res.send(html);
+  }
+);
+
 /* ── GET /api/playlists/:id/pdf-download ────────────────────────────
-   Streams a real PDF file as a direct download (no print dialog).
-   Uses html-pdf-node to render headless Chrome on the server.
+   Generates a real PDF and streams it as a direct file download.
+   Uses puppeteer-core + @sparticuz/chromium (Railway-compatible).
    ─────────────────────────────────────────────────────────────────── */
 router.get('/:id/pdf-download',
-  // Auth: Bearer header only (fetch, not window.open)
   async (req, res, next) => {
     const jwt  = require('jsonwebtoken');
     const User = require('../models/User');
@@ -143,8 +227,11 @@ router.get('/:id/pdf-download',
   },
   loadOwnedPlaylist,
   async (req, res) => {
+    let browser;
     try {
-      const htmlPdf = require('html-pdf-node');
+      const puppeteer = require('puppeteer-core');
+      const chromium  = require('@sparticuz/chromium');
+
       await req.playlist.populate('songs.song');
       const playlist = req.playlist;
 
@@ -161,9 +248,9 @@ router.get('/:id/pdf-download',
         .map((entry, i) => {
           const s = entry.song;
           const variants = [
-            { label: 'English',  cssClass: '',       title: s.title,       lyrics: s.lyrics       },
-            { label: 'తెలుగు',  cssClass: 'telugu', title: s.titleTelugu, lyrics: s.lyricsTelugu },
-            { label: 'हिन्दी',   cssClass: 'hindi',  title: s.titleHindi,  lyrics: s.lyricsHindi  },
+            { label: 'English', cssClass: '',       lyrics: s.lyrics       },
+            { label: 'తెలుగు', cssClass: 'telugu', lyrics: s.lyricsTelugu },
+            { label: 'हिन्दी',  cssClass: 'hindi',  lyrics: s.lyricsHindi  },
           ].filter(v => v.lyrics?.trim());
 
           const multiLang = variants.length > 1;
@@ -196,6 +283,8 @@ router.get('/:id/pdf-download',
             </div>`;
         }).join('\n');
 
+      const songCount = playlist.songs.filter(e => e.song).length;
+
       const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -206,7 +295,7 @@ router.get('/:id/pdf-download',
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: 'Plus Jakarta Sans', Arial, sans-serif;
     background: #ffffff;
     color: #1e1b2e;
     font-size: 12px;
@@ -215,7 +304,9 @@ router.get('/:id/pdf-download',
 
   /* ── Cover page ── */
   .cover {
+    width: 100%;
     height: 100vh;
+    min-height: 842px;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -227,21 +318,21 @@ router.get('/:id/pdf-download',
     position: relative;
     overflow: hidden;
   }
-  .cover::before {
-    content: '';
+  .cover-glow-1 {
     position: absolute;
     top: -120px; right: -120px;
-    width: 480px; height: 480px;
+    width: 500px; height: 500px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(99,102,241,0.25) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(99,102,241,0.28) 0%, transparent 70%);
+    pointer-events: none;
   }
-  .cover::after {
-    content: '';
+  .cover-glow-2 {
     position: absolute;
     bottom: -80px; left: 40px;
-    width: 300px; height: 300px;
+    width: 320px; height: 320px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(20,184,166,0.18) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(20,184,166,0.2) 0%, transparent 70%);
+    pointer-events: none;
   }
   .cover-eyebrow {
     font-size: 10px;
@@ -250,44 +341,49 @@ router.get('/:id/pdf-download',
     text-transform: uppercase;
     color: #14b8a6;
     margin-bottom: 20px;
+    position: relative;
   }
   .cover-title {
-    font-size: 44px;
+    font-size: 48px;
     font-weight: 700;
-    line-height: 1.15;
+    line-height: 1.1;
     color: #ffffff;
-    max-width: 520px;
-    margin-bottom: 16px;
+    max-width: 540px;
+    margin-bottom: 20px;
+    position: relative;
   }
   .cover-desc {
     font-size: 14px;
-    color: rgba(255,255,255,0.55);
-    max-width: 420px;
+    color: rgba(255,255,255,0.5);
+    max-width: 400px;
     margin-bottom: 48px;
+    position: relative;
   }
   .cover-divider {
-    width: 48px;
+    width: 56px;
     height: 3px;
     background: linear-gradient(90deg, #14b8a6, #6366f1);
     border-radius: 2px;
-    margin-bottom: 32px;
+    margin-bottom: 36px;
+    position: relative;
   }
   .cover-stats {
     display: flex;
-    gap: 40px;
+    gap: 48px;
+    position: relative;
   }
   .cover-stat-num {
-    font-size: 28px;
+    font-size: 32px;
     font-weight: 700;
     color: #ffffff;
     line-height: 1;
   }
   .cover-stat-label {
     font-size: 10px;
-    color: rgba(255,255,255,0.45);
-    letter-spacing: 1px;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 1.5px;
     text-transform: uppercase;
-    margin-top: 4px;
+    margin-top: 6px;
   }
   .cover-footer {
     position: absolute;
@@ -298,19 +394,19 @@ router.get('/:id/pdf-download',
     justify-content: space-between;
     align-items: center;
     font-size: 10px;
-    color: rgba(255,255,255,0.3);
+    color: rgba(255,255,255,0.25);
     letter-spacing: 0.5px;
   }
 
-  /* ── Song cards ── */
+  /* ── Songs section ── */
   .songs-section { padding: 40px 48px; }
 
   .section-header {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 14px;
     margin-bottom: 28px;
-    padding-bottom: 12px;
+    padding-bottom: 14px;
     border-bottom: 2px solid #ede9fe;
   }
   .section-label {
@@ -319,9 +415,11 @@ router.get('/:id/pdf-download',
     letter-spacing: 2.5px;
     text-transform: uppercase;
     color: #6366f1;
+    white-space: nowrap;
   }
   .section-line { flex: 1; height: 1px; background: #ede9fe; }
 
+  /* ── Song card ── */
   .song-card {
     border: 1.5px solid #ede9fe;
     border-radius: 12px;
@@ -356,7 +454,7 @@ router.get('/:id/pdf-download',
     box-shadow: 0 2px 8px rgba(99,102,241,0.35);
   }
 
-  .song-title-wrap { flex: 1; }
+  .song-title-wrap { flex: 1; min-width: 0; }
 
   .song-title {
     font-size: 15px;
@@ -381,7 +479,7 @@ router.get('/:id/pdf-download',
   .alt-title {
     font-size: 12px;
     margin-top: 3px;
-    opacity: 0.8;
+    opacity: 0.85;
   }
   .alt-title.telugu { font-family: 'Noto Sans Telugu', sans-serif; color: #0d9488; }
   .alt-title.hindi  { font-family: 'Noto Sans Devanagari', sans-serif; color: #7c3aed; }
@@ -393,7 +491,7 @@ router.get('/:id/pdf-download',
     letter-spacing: 0.3px;
   }
 
-  /* ── Lyrics body ── */
+  /* ── Lyrics ── */
   .song-body { padding: 16px 20px 20px 72px; }
 
   .lyric-block { margin-bottom: 18px; }
@@ -409,12 +507,12 @@ router.get('/:id/pdf-download',
     border-radius: 3px;
     margin-bottom: 8px;
   }
-  .lang-tag          { background: #f0f9ff; color: #0369a1; }
+  .lang-tag        { background: #f0f9ff; color: #0369a1; }
   .telugu-tag { background: #f0fdfa; color: #0d9488; }
   .hindi-tag  { background: #faf5ff; color: #7c3aed; }
 
   pre.lyrics {
-    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-family: 'Plus Jakarta Sans', Arial, sans-serif;
     font-size: 12px;
     color: #374151;
     white-space: pre-wrap;
@@ -435,27 +533,28 @@ router.get('/:id/pdf-download',
     justify-content: space-between;
     align-items: center;
     font-size: 10px;
-    color: #c4b5fd;
+    color: #a5b4fc;
     letter-spacing: 0.5px;
   }
-  .footer-brand { font-weight: 600; color: #6366f1; }
+  .footer-brand { font-weight: 700; color: #6366f1; }
 </style>
 </head>
 <body>
 
-<!-- Cover -->
 <div class="cover">
+  <div class="cover-glow-1"></div>
+  <div class="cover-glow-2"></div>
   <div class="cover-eyebrow">New Covenant Church · Full Gospel</div>
   <div class="cover-title">${esc(playlist.name)}</div>
   ${playlist.description ? `<div class="cover-desc">${esc(playlist.description)}</div>` : ''}
   <div class="cover-divider"></div>
   <div class="cover-stats">
     <div>
-      <div class="cover-stat-num">${playlist.songs.filter(e => e.song).length}</div>
+      <div class="cover-stat-num">${songCount}</div>
       <div class="cover-stat-label">Songs</div>
     </div>
     <div>
-      <div class="cover-stat-num">${date.split(' ').pop()}</div>
+      <div class="cover-stat-num">${new Date().getFullYear()}</div>
       <div class="cover-stat-label">Year</div>
     </div>
   </div>
@@ -465,7 +564,6 @@ router.get('/:id/pdf-download',
   </div>
 </div>
 
-<!-- Songs -->
 <div class="songs-section">
   <div class="section-header">
     <span class="section-label">Song Lyrics</span>
@@ -482,23 +580,33 @@ router.get('/:id/pdf-download',
 </body>
 </html>`;
 
-      const options = {
-        format: 'A4',
+      browser = await puppeteer.launch({
+        args:            chromium.args,
+        defaultViewport: chromium.defaultViewport,
+        executablePath:  await chromium.executablePath(),
+        headless:        chromium.headless,
+      });
+
+      const page = await browser.newPage();
+      await page.setContent(html, { waitUntil: 'networkidle0' });
+      const pdfBuffer = await page.pdf({
+        format:          'A4',
         printBackground: true,
         margin: { top: '0', right: '0', bottom: '0', left: '0' },
-        args: ['--no-sandbox', '--disable-setuid-sandbox'],
-      };
+      });
+      await browser.close();
+      browser = null;
 
-      const file = { content: html };
-      const pdfBuffer = await htmlPdf.generatePdf(file, options);
+      const safeName = (playlist.name || 'playlist')
+        .replace(/[^a-z0-9\s-]/gi, '').trim().replace(/\s+/g, '-');
 
-      const safeName = (playlist.name || 'playlist').replace(/[^a-z0-9\s-]/gi, '').trim().replace(/\s+/g, '-');
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${safeName}.pdf"`);
       res.setHeader('Content-Length', pdfBuffer.length);
       res.send(pdfBuffer);
 
     } catch (err) {
+      if (browser) { try { await browser.close(); } catch (_) {} }
       console.error('PDF generation error:', err);
       res.status(500).json({ success: false, message: 'Failed to generate PDF' });
     }
