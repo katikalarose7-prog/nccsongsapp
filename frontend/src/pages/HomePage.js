@@ -11,7 +11,7 @@ import AccountMenu from '../components/AccountMenu';
 import InstallAppButton from '../components/InstallAppButton';
 
 const LANGUAGES  = ['All','English','Telugu','Hindi','Multilingual'];
-const CATEGORIES = ['All','Worship','Praise','Christmas','Resurrection','Communion','Wedding','Death','Thanksgiving','Other'];
+const CATEGORIES = ['All','Worship','Praise','Christmas','Resurrection','Communion','Wedding','Death','Thanksgiving','SundaySchoolSongs','Other'];
 
 // Guest favourites (not logged in) still persist locally so the feature
 // works without forcing an account; once logged in we use the server list.
@@ -437,25 +437,72 @@ const totalPages = total ? Math.ceil(total / 18) : 1;
             )}
 
             {/* ── FILTERS ─────────────────────────────────────────── */}
-            <div className="filters">
+      <div className="filters">
   <div className="filters-scroll">
-    <span className="filter-label">Lang</span>
-    {LANGUAGES.map(l => (
-      <button key={l} className={`filter-chip ${lang === l ? 'active' : ''}`} onClick={() => setLang(l)}>{l}</button>
-    ))}
-    <span className="filter-divider" />
-    <span className="filter-label">Cat</span>
-    {CATEGORIES.map(c => (
-      <button key={c} className={`filter-chip ${cat === c ? 'active' : ''}`} onClick={() => setCat(c)}>{c}</button>
-    ))}
-    <select className="filter-sort" value={sort} onChange={e => setSort(e.target.value)}>
+
+    {/* Desktop */}
+    <div className="desktop-filters">
+      <span className="filter-label">Lang</span>
+      {LANGUAGES.map(l => (
+        <button
+          key={l}
+          className={`filter-chip ${lang === l ? 'active' : ''}`}
+          onClick={() => setLang(l)}
+        >
+          {l}
+        </button>
+      ))}
+
+      <span className="filter-divider" />
+
+      <span className="filter-label">Cat</span>
+      {CATEGORIES.map(c => (
+        <button
+          key={c}
+          className={`filter-chip ${cat === c ? 'active' : ''}`}
+          onClick={() => setCat(c)}
+        >
+          {c}
+        </button>
+      ))}
+    </div>
+
+    {/* Mobile */}
+    <div className="mobile-filters">
+      <select
+        className="filter-select"
+        value={lang}
+        onChange={(e) => setLang(e.target.value)}
+      >
+        {LANGUAGES.map(l => (
+          <option key={l} value={l}>{l}</option>
+        ))}
+      </select>
+
+      <select
+        className="filter-select"
+        value={cat}
+        onChange={(e) => setCat(e.target.value)}
+      >
+        {CATEGORIES.map(c => (
+          <option key={c} value={c}>{c}</option>
+        ))}
+      </select>
+    </div>
+
+    <select
+      className="filter-sort"
+      value={sort}
+      onChange={(e) => setSort(e.target.value)}
+    >
       <option value="songNumber">By No.</option>
       <option value="title">A–Z</option>
       <option value="newest">Newest</option>
     </select>
-    {data && !loading && (
+
+    {!loading && (
       <span className="filter-count">
-        {data?.total || 0} song{(data?.total || 0) !== 1 ? 's' : ''}
+        {data?.total || 0} song{(data?.total || 0) !== 1 ? "s" : ""}
       </span>
     )}
   </div>

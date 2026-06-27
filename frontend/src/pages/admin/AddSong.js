@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { Link2, Upload, X, Music, Loader2 } from 'lucide-react';
 import { createSong, updateSong, fetchSong, uploadAudio } from '../../services/api';
 
-const CATEGORIES = ['worship','praise','christmas','resurrection','communion','wedding','death','thanksgiving','other'];
+const CATEGORIES = ['worship','praise','christmas','resurrection','communion','wedding','death','thanksgiving','sundayschoolsongs','other'];
 
 const BLANK = {
   title: '', titleTelugu: '', titleHindi: '',

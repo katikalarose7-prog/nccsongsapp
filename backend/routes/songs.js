@@ -11,7 +11,7 @@ const { sendNewSongEmail, sendBulkNewSongsEmail } = require('../utils/email');
 const router  = express.Router();
 const upload  = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-const CATEGORIES = ['worship','praise','christmas','resurrection','communion','wedding','death','thanksgiving','other'];
+const CATEGORIES = ['worship','praise','christmas','resurrection','communion','wedding','death','thanksgiving','SundaySchool','other'];
 const LANGUAGES  = ['english','telugu','hindi','multilingual'];
 
 const validate = (req, res, next) => {
@@ -263,7 +263,7 @@ router.get('/export/template', requireAdmin, (req, res) => {
     title: 'Song Title', titleTelugu: 'Telugu Title', titleHindi: 'Hindi Title',
     lyrics: 'Lyrics (English)', lyricsTelugu: 'Lyrics (Telugu)', lyricsHindi: 'Lyrics (Hindi)',
     language: 'english/telugu/hindi/multilingual',
-    category: 'worship/praise/christmas/resurrection/communion/wedding/death/thanksgiving/other',
+    category: 'worship/praise/christmas/resurrection/communion/wedding/death/thanksgiving/sundayschoolsongs/other',
     key: 'G', songNumber: '1', tags: 'tag1,tag2',
     youtubeUrl: 'https://youtube.com/watch?v=...', audioUrl: 'https://example.com/song.mp3',
   }];

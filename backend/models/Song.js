@@ -27,7 +27,7 @@ const songSchema = new mongoose.Schema(
 
     category: {
       type: String,
-      enum: ['worship', 'praise', 'christmas', 'resurrection', 'communion', 'wedding', 'death', 'thanksgiving', 'other'],
+      enum: ['worship', 'praise', 'christmas', 'resurrection', 'communion', 'wedding', 'death', 'thanksgiving','SundaySchoolSongs', 'other'],
       default: 'worship',
       index: true,
     },

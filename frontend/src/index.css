@@ -594,3 +594,49 @@ tr:hover td { background: var(--surface-1); }
   margin: 0 2px;
 }
 
+.desktop-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-filters {
+  display: none;
+}
+
+.filter-select {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: #fff;
+  min-width: 140px;
+  font-size: 14px;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .desktop-filters {
+    display: none;
+  }
+
+  .mobile-filters {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .mobile-filters .filter-select {
+    flex: 1;
+  }
+
+  .filter-sort {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .filters-scroll {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
