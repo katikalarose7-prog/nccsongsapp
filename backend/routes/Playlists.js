@@ -229,8 +229,8 @@ router.get('/:id/pdf-download',
   async (req, res) => {
     let browser;
     try {
-      const puppeteer = require('puppeteer-core');
-      const chromium  = require('@sparticuz/chromium');
+      const { chromium: playwrightChromium } = require('playwright');
+
 
       await req.playlist.populate('songs.song');
       const playlist = req.playlist;
@@ -580,14 +580,20 @@ router.get('/:id/pdf-download',
 </body>
 </html>`;
 
-      browser = await puppeteer.launch({
-        args:            chromium.args,
-        defaultViewport: chromium.defaultViewport,
-executablePath: typeof chromium.executablePath === 'function'
-  ? await chromium.executablePath()
-  : await chromium.executablePath,
-          headless:        chromium.headless,
-      });
+     // REPLACE WITH:
+const { chromium: playwrightChromium } = require('playwright');
+
+browser = await playwrightChromium.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+const page = await browser.newPage();
+await page.setContent(html, { waitUntil: 'networkidle0' });
+const pdfBuffer = await page.pdf({
+  format:          'A4',
+  printBackground: true,
+  margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' },
+});
+await browser.close();
+browser = null;
+
 
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: 'networkidle0' });
