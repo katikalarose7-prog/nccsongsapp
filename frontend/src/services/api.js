@@ -112,17 +112,26 @@ export const updatePlaylist      = (id, data)       => API.put(`/playlists/${id}
 export const deletePlaylist      = (id)             => API.delete(`/playlists/${id}`).then(r => r.data);
 export const addSongToPlaylist   = (id, songId)     => API.post(`/playlists/${id}/songs`, { songId }).then(r => r.data);
 export const removeSongFromPlaylist = (id, songId)  => API.delete(`/playlists/${id}/songs/${songId}`).then(r => r.data);
-export const downloadPlaylistPdf = (id, name) => {
-  // Opens a print-ready HTML page in a new tab.
-  // The page loads Telugu/Hindi fonts from Google Fonts (already in the
-  // browser's font cache from using the app) and shows a Print button.
-  // User clicks Print / Ctrl+P and saves as PDF — Telugu renders perfectly
-  // because the browser's own font engine handles the script shaping.
+export const downloadPlaylistPdf = async (id, name) => {
   const token = localStorage.getItem('ncc_user_token');
   const base  = (process.env.REACT_APP_API_URL || '/api').replace(/\/api\/?$/, '');
-  const url   = `${base}/api/playlists/${id}/pdf`;
-  // Pass auth token as query param since we can't set headers on window.open
-  window.open(`${url}?token=${token}`, '_blank');
+  const url   = `${base}/api/playlists/${id}/pdf-download`;
+
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || 'Failed to download PDF');
+  }
+
+  const blob = await res.blob();
+  const link = document.createElement('a');
+  link.href  = URL.createObjectURL(blob);
+  link.download = `${name || 'playlist'}.pdf`;
+  link.click();
+  URL.revokeObjectURL(link.href);
 };
 
 /* ── Audio file upload (admin only) ───────────────────────────────── */

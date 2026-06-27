@@ -117,248 +117,391 @@ router.delete('/:id/songs/:songId', requireUser, loadOwnedPlaylist, async (req, 
    - Zero extra packages or font files on the server
    - CSP-safe: all JS uses a per-request nonce, no inline handlers
    ─────────────────────────────────────────────────────────────────── */
-router.get('/:id/pdf',
-  // Accept token from query param since window.open cannot set headers
+/* ── GET /api/playlists/:id/pdf-download ────────────────────────────
+   Streams a real PDF file as a direct download (no print dialog).
+   Uses html-pdf-node to render headless Chrome on the server.
+   ─────────────────────────────────────────────────────────────────── */
+router.get('/:id/pdf-download',
+  // Auth: Bearer header only (fetch, not window.open)
   async (req, res, next) => {
     const jwt  = require('jsonwebtoken');
     const User = require('../models/User');
-    let token = null;
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      token = authHeader.split(' ')[1];
-    } else if (req.query.token) {
-      token = req.query.token;
-    }
-    if (!token) return res.status(401).send('<h2 style="font-family:sans-serif;padding:40px">Not authenticated. Please log in.</h2>');
+    if (!authHeader?.startsWith('Bearer '))
+      return res.status(401).json({ success: false, message: 'Not authenticated' });
+    const token = authHeader.split(' ')[1];
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      if (decoded.type !== 'user') return res.status(403).send('<h2 style="font-family:sans-serif;padding:40px">Access denied.</h2>');
+      if (decoded.type !== 'user') return res.status(403).json({ success: false, message: 'Access denied' });
       const user = await User.findById(decoded.id);
-      if (!user || !user.isActive) return res.status(401).send('<h2 style="font-family:sans-serif;padding:40px">Account not found.</h2>');
+      if (!user || !user.isActive) return res.status(401).json({ success: false, message: 'Account not found' });
       req.user = user;
       next();
     } catch {
-      return res.status(401).send('<h2 style="font-family:sans-serif;padding:40px">Session expired — please log in again.</h2>');
+      return res.status(401).json({ success: false, message: 'Session expired' });
     }
   },
   loadOwnedPlaylist,
   async (req, res) => {
-    await req.playlist.populate('songs.song');
-    const playlist = req.playlist;
+    try {
+      const htmlPdf = require('html-pdf-node');
+      await req.playlist.populate('songs.song');
+      const playlist = req.playlist;
 
-    // Per-request nonce for CSP — prevents inline script attacks
-    const nonce = crypto.randomBytes(16).toString('base64');
+      const date = new Date().toLocaleDateString('en-IN', {
+        day: 'numeric', month: 'long', year: 'numeric',
+      });
 
-    res.setHeader('Content-Security-Policy',
-      `default-src 'self'; ` +
-      `script-src 'nonce-${nonce}'; ` +
-      `style-src 'unsafe-inline' https://fonts.googleapis.com; ` +
-      `font-src https://fonts.gstatic.com; ` +
-      `img-src 'self' data: https:; ` +
-      `connect-src 'none'`
-    );
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      const esc = (str) => (str || '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-    const date = new Date().toLocaleDateString('en-IN', {
-      day: 'numeric', month: 'long', year: 'numeric'
-    });
+      const songsHtml = playlist.songs
+        .filter(e => e.song)
+        .map((entry, i) => {
+          const s = entry.song;
+          const variants = [
+            { label: 'English',  cssClass: '',       title: s.title,       lyrics: s.lyrics       },
+            { label: 'తెలుగు',  cssClass: 'telugu', title: s.titleTelugu, lyrics: s.lyricsTelugu },
+            { label: 'हिन्दी',   cssClass: 'hindi',  title: s.titleHindi,  lyrics: s.lyricsHindi  },
+          ].filter(v => v.lyrics?.trim());
 
-    const esc = (str) => (str || '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+          const multiLang = variants.length > 1;
 
-    const songsHtml = playlist.songs
-      .filter(e => e.song)
-      .map((entry, i) => {
-        const s = entry.song;
+          const lyricBlocks = variants.map(v => `
+            <div class="lyric-block">
+              ${multiLang ? `<span class="lang-tag ${v.cssClass}-tag">${v.label}</span>` : ''}
+              <pre class="lyrics ${v.cssClass}">${esc(v.lyrics)}</pre>
+            </div>`).join('');
 
-        const variants = [
-          { lang: 'english',  label: 'English',  cssClass: '',        title: s.title,       lyrics: s.lyrics       },
-          { lang: 'telugu',   label: 'తెలుగు',   cssClass: 'telugu',  title: s.titleTelugu, lyrics: s.lyricsTelugu },
-          { lang: 'hindi',    label: 'हिन्दी',    cssClass: 'hindi',   title: s.titleHindi,  lyrics: s.lyricsHindi  },
-        ].filter(v => v.lyrics && v.lyrics.trim());
+          const altTitles = [
+            s.titleTelugu ? `<div class="alt-title telugu">${esc(s.titleTelugu)}</div>` : '',
+            s.titleHindi  ? `<div class="alt-title hindi">${esc(s.titleHindi)}</div>`   : '',
+          ].join('');
 
-        const multiLang = variants.length > 1;
+          const meta = [s.category, s.language, s.key ? `Key: ${s.key}` : '', s.tempo]
+            .filter(Boolean).join('  ·  ');
 
-        const lyricBlocks = variants.map(v => `
-          <div class="lyric-block">
-            ${multiLang ? `<div class="lang-pill ${v.cssClass}-pill">${v.label}</div>` : ''}
-            <pre class="lyrics ${v.cssClass}">${esc(v.lyrics)}</pre>
-          </div>`).join('');
-
-        const altTitles = [
-          s.titleTelugu ? `<div class="title-telugu">${esc(s.titleTelugu)}</div>` : '',
-          s.titleHindi  ? `<div class="title-hindi">${esc(s.titleHindi)}</div>`   : '',
-        ].join('');
-
-        const meta = [s.category, s.language, s.key ? `Key: ${s.key}` : '', s.tempo || '']
-          .filter(Boolean).join(' · ');
-
-        return `
-          <div class="song-card">
-            <div class="song-header">
-              <div class="song-num">${String(i + 1).padStart(2, '0')}</div>
-              <div class="song-title-wrap">
-                <div class="song-title">${esc(s.title)}${s.songNumber ? ` <span class="song-badge">No.${s.songNumber}</span>` : ''}</div>
-                ${altTitles}
-                <div class="song-meta">${esc(meta)}</div>
+          return `
+            <div class="song-card">
+              <div class="song-header">
+                <div class="song-num">${String(i + 1).padStart(2, '0')}</div>
+                <div class="song-title-wrap">
+                  <div class="song-title">${esc(s.title)}${s.songNumber ? `<span class="badge">№ ${s.songNumber}</span>` : ''}</div>
+                  ${altTitles}
+                  ${meta ? `<div class="song-meta">${esc(meta)}</div>` : ''}
+                </div>
               </div>
-            </div>
-            <div class="song-lyrics">
-              ${lyricBlocks || '<p class="no-lyrics">(No lyrics)</p>'}
-            </div>
-          </div>`;
-      }).join('\n');
+              <div class="song-body">${lyricBlocks || '<p class="no-lyrics">No lyrics available</p>'}</div>
+            </div>`;
+        }).join('\n');
 
-    const html = `<!DOCTYPE html>
+      const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${esc(playlist.name)} — NCC Songs</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Telugu:wght@400;600&family=Noto+Sans+Devanagari:wght@400;600&family=Inter:wght@400;500;600&display=swap">
-  <style>
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Inter',Arial,sans-serif;background:#f8f6ff;color:#111;font-size:13px}
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Telugu:wght@400;600&family=Noto+Sans+Devanagari:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* Print bar */
-    .print-bar{position:fixed;top:0;left:0;right:0;z-index:99;background:#1a0533;color:#fff;
-      padding:10px 24px;display:flex;align-items:center;justify-content:space-between;
-      box-shadow:0 2px 12px rgba(0,0,0,0.3)}
-    .print-bar-left{display:flex;align-items:center;gap:12px}
-    .print-bar-logo{width:36px;height:36px;border-radius:50%;border:2px solid rgba(255,255,255,0.4)}
-    .print-bar-title{font-size:14px;font-weight:600}
-    .print-bar-sub{font-size:11px;opacity:0.6}
-    .print-btn{background:#f0a500;color:#1a0533;border:none;padding:9px 22px;
-      border-radius:8px;font-size:14px;font-weight:700;cursor:pointer}
-    .print-btn:hover{background:#e09600}
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: #ffffff;
+    color: #1e1b2e;
+    font-size: 12px;
+    line-height: 1.6;
+  }
 
-    /* Page */
-    .page{max-width:800px;margin:0 auto;padding:72px 40px 60px}
+  /* ── Cover page ── */
+  .cover {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 72px 64px;
+    background: linear-gradient(145deg, #0f0c29 0%, #1a1060 50%, #24243e 100%);
+    color: #fff;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover::before {
+    content: '';
+    position: absolute;
+    top: -120px; right: -120px;
+    width: 480px; height: 480px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(99,102,241,0.25) 0%, transparent 70%);
+  }
+  .cover::after {
+    content: '';
+    position: absolute;
+    bottom: -80px; left: 40px;
+    width: 300px; height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(20,184,166,0.18) 0%, transparent 70%);
+  }
+  .cover-eyebrow {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #14b8a6;
+    margin-bottom: 20px;
+  }
+  .cover-title {
+    font-size: 44px;
+    font-weight: 700;
+    line-height: 1.15;
+    color: #ffffff;
+    max-width: 520px;
+    margin-bottom: 16px;
+  }
+  .cover-desc {
+    font-size: 14px;
+    color: rgba(255,255,255,0.55);
+    max-width: 420px;
+    margin-bottom: 48px;
+  }
+  .cover-divider {
+    width: 48px;
+    height: 3px;
+    background: linear-gradient(90deg, #14b8a6, #6366f1);
+    border-radius: 2px;
+    margin-bottom: 32px;
+  }
+  .cover-stats {
+    display: flex;
+    gap: 40px;
+  }
+  .cover-stat-num {
+    font-size: 28px;
+    font-weight: 700;
+    color: #ffffff;
+    line-height: 1;
+  }
+  .cover-stat-label {
+    font-size: 10px;
+    color: rgba(255,255,255,0.45);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+  .cover-footer {
+    position: absolute;
+    bottom: 36px;
+    left: 64px;
+    right: 64px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.5px;
+  }
 
-    /* Document cover header */
-    .doc-cover{background:#1a0533;color:#fff;border-radius:14px;padding:32px;
-      text-align:center;margin-bottom:32px}
-    .doc-cover img{width:72px;height:72px;border-radius:50%;border:3px solid rgba(255,255,255,0.3);
-      background:#fff;display:block;margin:0 auto 16px}
-    .doc-cover-church{font-size:11px;letter-spacing:2px;text-transform:uppercase;
-      color:rgba(255,255,255,0.55);margin-bottom:6px}
-    .doc-cover-name{font-size:24px;font-weight:700;color:#f0a500;margin-bottom:6px}
-    .doc-cover-desc{font-size:13px;color:rgba(255,255,255,0.65);margin-bottom:8px}
-    .doc-cover-meta{font-size:11px;color:rgba(255,255,255,0.4)}
+  /* ── Song cards ── */
+  .songs-section { padding: 40px 48px; }
 
-    /* Song card */
-    .song-card{background:#fff;border-radius:12px;border:1.5px solid #e0d4ff;
-      margin-bottom:20px;overflow:hidden}
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 28px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #ede9fe;
+  }
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: #6366f1;
+  }
+  .section-line { flex: 1; height: 1px; background: #ede9fe; }
 
-    /* Song header bar */
-    .song-header{background:#f5f0ff;border-bottom:1.5px solid #e0d4ff;
-      padding:14px 20px;display:flex;align-items:flex-start;gap:14px}
-    .song-num{background:#1a0533;color:#f0a500;border-radius:8px;
-      min-width:36px;height:36px;display:flex;align-items:center;justify-content:center;
-      font-size:13px;font-weight:700;flex-shrink:0;letter-spacing:0.5px}
-    .song-title-wrap{flex:1}
-    .song-title{font-size:16px;font-weight:700;color:#1a0533;line-height:1.3}
-    .song-badge{font-size:10px;font-weight:600;background:#e0d4ff;color:#3b0f6e;
-      padding:2px 7px;border-radius:4px;margin-left:6px;vertical-align:middle}
-    .title-telugu{font-family:'Noto Sans Telugu',sans-serif;font-size:13px;color:#1a5fb4;margin-top:3px}
-    .title-hindi{font-family:'Noto Sans Devanagari',sans-serif;font-size:13px;color:#c2410c;margin-top:3px}
-    .song-meta{font-size:11px;color:#888;margin-top:6px;text-transform:capitalize;letter-spacing:0.3px}
+  .song-card {
+    border: 1.5px solid #ede9fe;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    page-break-inside: avoid;
+    background: #fafafa;
+  }
 
-    /* Lyrics body */
-    .song-lyrics{padding:16px 20px 20px 70px}
-    .lyric-block{margin-bottom:16px}
-    .lyric-block:last-child{margin-bottom:0}
+  .song-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 14px 20px;
+    background: linear-gradient(135deg, #f5f3ff 0%, #eef2ff 100%);
+    border-bottom: 1.5px solid #ede9fe;
+  }
 
-    /* Language pills */
-    .lang-pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:1px;
-      text-transform:uppercase;padding:2px 9px;border-radius:4px;margin-bottom:7px}
-    .english-pill{background:#f0ebff;color:#3b0f6e}
-    .telugu-pill{background:#e8f0fe;color:#1a5fb4}
-    .hindi-pill{background:#fff1f0;color:#c2410c}
-    .-pill{background:#f0ebff;color:#3b0f6e}
+  .song-num {
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.3px;
+    box-shadow: 0 2px 8px rgba(99,102,241,0.35);
+  }
 
-    /* Lyrics text */
-    pre.lyrics{font-family:'Inter',Arial,sans-serif;font-size:13px;color:#222;
-      white-space:pre-wrap;word-break:break-word;line-height:1.9}
-    pre.lyrics.telugu{font-family:'Noto Sans Telugu',sans-serif;font-size:14px;line-height:2.1}
-    pre.lyrics.hindi{font-family:'Noto Sans Devanagari',sans-serif;font-size:14px;line-height:2.1}
-    .no-lyrics{color:#bbb;font-style:italic;font-size:12px}
+  .song-title-wrap { flex: 1; }
 
-    /* Footer */
-    .doc-footer{text-align:center;padding:24px 0 8px;
-      font-size:11px;color:#aaa;border-top:1.5px solid #e0d4ff;margin-top:8px}
+  .song-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1e1b2e;
+    line-height: 1.3;
+  }
 
-    /* Print styles */
-    @media print{
-      body{background:#fff;font-size:12px}
-      .print-bar{display:none!important}
-      .page{padding:20px 32px;margin:0;max-width:100%}
-      .doc-cover{border-radius:0;margin:-20px -32px 24px;padding:24px 32px}
-      .song-card{page-break-inside:avoid;border:1px solid #ccc;border-radius:8px;margin-bottom:16px}
-      .song-card+.song-card{page-break-before:always}
-      .song-lyrics{padding:14px 16px 16px 56px}
-      pre.lyrics{font-size:11.5px;line-height:1.8}
-      pre.lyrics.telugu,pre.lyrics.hindi{font-size:12.5px;line-height:2.0}
-      .song-title{font-size:14px}
-      .song-num{min-width:30px;height:30px;font-size:11px;border-radius:6px}
-    }
+  .badge {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 600;
+    background: #ede9fe;
+    color: #4f46e5;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 8px;
+    vertical-align: middle;
+    letter-spacing: 0.3px;
+  }
 
-    @media(max-width:600px){
-      .page{padding:60px 14px 40px}
-      .song-lyrics{padding:14px 14px 16px}
-      pre.lyrics{font-size:12.5px}
-    }
-  </style>
+  .alt-title {
+    font-size: 12px;
+    margin-top: 3px;
+    opacity: 0.8;
+  }
+  .alt-title.telugu { font-family: 'Noto Sans Telugu', sans-serif; color: #0d9488; }
+  .alt-title.hindi  { font-family: 'Noto Sans Devanagari', sans-serif; color: #7c3aed; }
+
+  .song-meta {
+    font-size: 10px;
+    color: #9ca3af;
+    margin-top: 6px;
+    letter-spacing: 0.3px;
+  }
+
+  /* ── Lyrics body ── */
+  .song-body { padding: 16px 20px 20px 72px; }
+
+  .lyric-block { margin-bottom: 18px; }
+  .lyric-block:last-child { margin-bottom: 0; }
+
+  .lang-tag {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-bottom: 8px;
+  }
+  .lang-tag          { background: #f0f9ff; color: #0369a1; }
+  .telugu-tag { background: #f0fdfa; color: #0d9488; }
+  .hindi-tag  { background: #faf5ff; color: #7c3aed; }
+
+  pre.lyrics {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 12px;
+    color: #374151;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 2;
+  }
+  pre.lyrics.telugu { font-family: 'Noto Sans Telugu', sans-serif; font-size: 13px; line-height: 2.2; }
+  pre.lyrics.hindi  { font-family: 'Noto Sans Devanagari', sans-serif; font-size: 13px; line-height: 2.2; }
+
+  .no-lyrics { color: #d1d5db; font-style: italic; font-size: 11px; }
+
+  /* ── Footer ── */
+  .doc-footer {
+    margin: 8px 48px 40px;
+    padding-top: 20px;
+    border-top: 1.5px solid #ede9fe;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 10px;
+    color: #c4b5fd;
+    letter-spacing: 0.5px;
+  }
+  .footer-brand { font-weight: 600; color: #6366f1; }
+</style>
 </head>
 <body>
 
-<div class="print-bar">
-  <div class="print-bar-left">
-    <img class="print-bar-logo" src="/icons/icon-192.png" alt="NCC" onerror="this.style.display='none'">
+<!-- Cover -->
+<div class="cover">
+  <div class="cover-eyebrow">New Covenant Church · Full Gospel</div>
+  <div class="cover-title">${esc(playlist.name)}</div>
+  ${playlist.description ? `<div class="cover-desc">${esc(playlist.description)}</div>` : ''}
+  <div class="cover-divider"></div>
+  <div class="cover-stats">
     <div>
-      <div class="print-bar-title">${esc(playlist.name)}</div>
-      <div class="print-bar-sub">${playlist.songs.filter(e=>e.song).length} songs · NCC Songs</div>
+      <div class="cover-stat-num">${playlist.songs.filter(e => e.song).length}</div>
+      <div class="cover-stat-label">Songs</div>
+    </div>
+    <div>
+      <div class="cover-stat-num">${date.split(' ').pop()}</div>
+      <div class="cover-stat-label">Year</div>
     </div>
   </div>
-  <button class="print-btn" id="printBtn">🖨 Print / Save as PDF</button>
+  <div class="cover-footer">
+    <span>NCC Songs App</span>
+    <span>${date}</span>
+  </div>
 </div>
 
-<div class="page">
-
-  <div class="doc-cover">
-    <img src="/icons/icon-192.png" alt="New Covenant Church Logo" onerror="this.style.display='none'">
-    <div class="doc-cover-church">New Covenant Church · Full Gospel</div>
-    <div class="doc-cover-name">${esc(playlist.name)}</div>
-    ${playlist.description ? `<div class="doc-cover-desc">${esc(playlist.description)}</div>` : ''}
-    <div class="doc-cover-meta">
-      ${playlist.songs.filter(e=>e.song).length} song${playlist.songs.filter(e=>e.song).length !== 1 ? 's' : ''}
-      &nbsp;·&nbsp; ${date}
-      &nbsp;·&nbsp; nccsongsapp.vercel.app
-    </div>
+<!-- Songs -->
+<div class="songs-section">
+  <div class="section-header">
+    <span class="section-label">Song Lyrics</span>
+    <div class="section-line"></div>
   </div>
-
   ${songsHtml}
-
-  <div class="doc-footer">
-    New Covenant Church Songs &nbsp;·&nbsp; nccsongsapp.vercel.app &nbsp;·&nbsp; Generated ${date}
-  </div>
-
 </div>
 
-<script nonce="${nonce}">
-  document.getElementById('printBtn').addEventListener('click', function() {
-    window.print();
-  });
-</script>
+<div class="doc-footer">
+  <span class="footer-brand">NCC Songs</span>
+  <span>${date}</span>
+</div>
 
 </body>
 </html>`;
 
-    res.send(html);
+      const options = {
+        format: 'A4',
+        printBackground: true,
+        margin: { top: '0', right: '0', bottom: '0', left: '0' },
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      };
+
+      const file = { content: html };
+      const pdfBuffer = await htmlPdf.generatePdf(file, options);
+
+      const safeName = (playlist.name || 'playlist').replace(/[^a-z0-9\s-]/gi, '').trim().replace(/\s+/g, '-');
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${safeName}.pdf"`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      res.send(pdfBuffer);
+
+    } catch (err) {
+      console.error('PDF generation error:', err);
+      res.status(500).json({ success: false, message: 'Failed to generate PDF' });
+    }
   }
 );
 
