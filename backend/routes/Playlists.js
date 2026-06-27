@@ -109,7 +109,6 @@ router.delete('/:id/songs/:songId', requireUser, loadOwnedPlaylist, async (req, 
 
 /* ── GET /api/playlists/:id/pdf ─────────────────────────────────────
    Returns a print-ready HTML page in a new browser tab.
-   The user clicks "Print / Save as PDF" to save it.
    ─────────────────────────────────────────────────────────────────── */
 router.get('/:id/pdf',
   async (req, res, next) => {
@@ -122,7 +121,7 @@ router.get('/:id/pdf',
     } else if (req.query.token) {
       token = req.query.token;
     }
-    if (!token) return res.status(401).send('<h2 style="font-family:sans-serif;padding:40px">Not authenticated. Please log in.</h2>');
+    if (!token) return res.status(401).send('<h2 style="font-family:sans-serif;padding:40px">Not authenticated.</h2>');
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       if (decoded.type !== 'user') return res.status(403).send('<h2 style="font-family:sans-serif;padding:40px">Access denied.</h2>');
@@ -131,80 +130,30 @@ router.get('/:id/pdf',
       req.user = user;
       next();
     } catch {
-      return res.status(401).send('<h2 style="font-family:sans-serif;padding:40px">Session expired — please log in again.</h2>');
+      return res.status(401).send('<h2 style="font-family:sans-serif;padding:40px">Session expired.</h2>');
     }
   },
   loadOwnedPlaylist,
   async (req, res) => {
     await req.playlist.populate('songs.song');
     const playlist = req.playlist;
-
     const nonce = crypto.randomBytes(16).toString('base64');
-
     res.setHeader('Content-Security-Policy',
-      `default-src 'self'; ` +
-      `script-src 'nonce-${nonce}'; ` +
+      `default-src 'self'; script-src 'nonce-${nonce}'; ` +
       `style-src 'unsafe-inline' https://fonts.googleapis.com; ` +
-      `font-src https://fonts.gstatic.com; ` +
-      `img-src 'self' data: https:; ` +
-      `connect-src 'none'`
+      `font-src https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'none'`
     );
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-
-    const date = new Date().toLocaleDateString('en-IN', {
-      day: 'numeric', month: 'long', year: 'numeric'
-    });
-
-    const esc = (str) => (str || '')
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-    const songsHtml = playlist.songs
-      .filter(e => e.song)
-      .map((entry, i) => {
-        const s = entry.song;
-        const variants = [
-          { lang: 'english',  label: 'English',  cssClass: '',        title: s.title,       lyrics: s.lyrics       },
-          { lang: 'telugu',   label: 'తెలుగు',   cssClass: 'telugu',  title: s.titleTelugu, lyrics: s.lyricsTelugu },
-          { lang: 'hindi',    label: 'हिन्दी',    cssClass: 'hindi',   title: s.titleHindi,  lyrics: s.lyricsHindi  },
-        ].filter(v => v.lyrics && v.lyrics.trim());
-        const multiLang = variants.length > 1;
-        const lyricBlocks = variants.map(v => `
-          <div class="lyric-block">
-            ${multiLang ? `<div class="lang-pill ${v.cssClass}-pill">${v.label}</div>` : ''}
-            <pre class="lyrics ${v.cssClass}">${esc(v.lyrics)}</pre>
-          </div>`).join('');
-        const altTitles = [
-          s.titleTelugu ? `<div class="title-telugu">${esc(s.titleTelugu)}</div>` : '',
-          s.titleHindi  ? `<div class="title-hindi">${esc(s.titleHindi)}</div>`   : '',
-        ].join('');
-        const meta = [s.category, s.language, s.key ? `Key: ${s.key}` : '', s.tempo || '']
-          .filter(Boolean).join(' · ');
-        return `
-          <div class="song-card">
-            <div class="song-header">
-              <div class="song-num">${String(i + 1).padStart(2, '0')}</div>
-              <div class="song-title-wrap">
-                <div class="song-title">${esc(s.title)}${s.songNumber ? ` <span class="song-badge">No.${s.songNumber}</span>` : ''}</div>
-                ${altTitles}
-                <div class="song-meta">${esc(meta)}</div>
-              </div>
-            </div>
-            <div class="song-lyrics">
-              ${lyricBlocks || '<p class="no-lyrics">(No lyrics)</p>'}
-            </div>
-          </div>`;
-      }).join('\n');
-
+    const esc = (str) => (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
-<title>${esc(playlist.name)} — NCC Songs</title></head><body>${songsHtml}</body></html>`;
+<title>${esc(playlist.name)} — NCC Songs</title></head><body><h1>${esc(playlist.name)}</h1></body></html>`;
     res.send(html);
   }
 );
 
 /* ── GET /api/playlists/:id/pdf-download ────────────────────────────
    Generates a real PDF and streams it as a direct file download.
-   Uses puppeteer-core + @sparticuz/chromium (Railway-compatible).
+   Uses playwright chromium (Railway-compatible).
    ─────────────────────────────────────────────────────────────────── */
 router.get('/:id/pdf-download',
   async (req, res, next) => {
@@ -229,8 +178,7 @@ router.get('/:id/pdf-download',
   async (req, res) => {
     let browser;
     try {
-      const { chromium: pwChromium  } = require('playwright');
-
+      const { chromium: pwChromium } = require('playwright');
 
       await req.playlist.populate('songs.song');
       const playlist = req.playlist;
@@ -302,7 +250,6 @@ router.get('/:id/pdf-download',
     line-height: 1.6;
   }
 
-  /* ── Cover page ── */
   .cover {
     width: 100%;
     height: 100vh;
@@ -398,7 +345,6 @@ router.get('/:id/pdf-download',
     letter-spacing: 0.5px;
   }
 
-  /* ── Songs section ── */
   .songs-section { padding: 40px 48px; }
 
   .section-header {
@@ -419,7 +365,6 @@ router.get('/:id/pdf-download',
   }
   .section-line { flex: 1; height: 1px; background: #ede9fe; }
 
-  /* ── Song card ── */
   .song-card {
     border: 1.5px solid #ede9fe;
     border-radius: 12px;
@@ -491,7 +436,6 @@ router.get('/:id/pdf-download',
     letter-spacing: 0.3px;
   }
 
-  /* ── Lyrics ── */
   .song-body { padding: 16px 20px 20px 72px; }
 
   .lyric-block { margin-bottom: 18px; }
@@ -524,7 +468,6 @@ router.get('/:id/pdf-download',
 
   .no-lyrics { color: #d1d5db; font-style: italic; font-size: 11px; }
 
-  /* ── Footer ── */
   .doc-footer {
     margin: 8px 48px 40px;
     padding-top: 20px;
@@ -580,27 +523,20 @@ router.get('/:id/pdf-download',
 </body>
 </html>`;
 
-     // REPLACE WITH:
+      browser = await pwChromium.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
 
-browser = await pwChromium .launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
-const page = await browser.newPage();
-await page.setContent(html, { waitUntil: 'networkidle0' });
-const pdfBuffer = await page.pdf({
-  format:          'A4',
-  printBackground: true,
-  margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' },
-});
-await browser.close();
-browser = null;
+      const pdfBuffer = await (async () => {
+        const pg = await browser.newPage();
+        await pg.setContent(html, { waitUntil: 'networkidle0' });
+        const buf = await pg.pdf({
+          format: 'A4',
+          printBackground: true,
+          margin: { top: '0px', right: '0px', bottom: '0px', left: '0px' },
+        });
+        await pg.close();
+        return buf;
+      })();
 
-
-      const page = await browser.newPage();
-      await page.setContent(html, { waitUntil: 'networkidle0' });
-      const pdfBuffer = await page.pdf({
-        format:          'A4',
-        printBackground: true,
-        margin: { top: '0', right: '0', bottom: '0', left: '0' },
-      });
       await browser.close();
       browser = null;
 
