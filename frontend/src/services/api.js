@@ -21,7 +21,7 @@ API.interceptors.request.use((config) => {
     ? localStorage.getItem(ADMIN_TOKEN_KEY)
     : isUserRoute
       ? localStorage.getItem(USER_TOKEN_KEY)
-      : (localStorage.getItem(USER_TOKEN_KEY) || null);
+      : (localStorage.getItem(USER_TOKEN_KEY) || null); // optional-auth GET routes prefer user token if present
 
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
@@ -54,7 +54,7 @@ const cached = async (key, fn) => {
 
 /* ── Songs ─────────────────────────────────────────────────────── */
 export const fetchSongs = (params) => {
-  cache.clear();
+  cache.clear(); // temporary — remove after fix confirmed
   const key = JSON.stringify(params);
   return cached(key, () => API.get('/songs', { params }).then(r => r.data));
 };
@@ -111,29 +111,15 @@ export const deletePlaylist      = (id)             => API.delete(`/playlists/${
 export const addSongToPlaylist   = (id, songId)     => API.post(`/playlists/${id}/songs`, { songId }).then(r => r.data);
 export const removeSongFromPlaylist = (id, songId)  => API.delete(`/playlists/${id}/songs/${songId}`).then(r => r.data);
 
-/* ── Download playlist as PDF (direct file download, no print dialog) ── */
-export const downloadPlaylistPdf = async (id, name) => {
+/* Opens the PDF preview page in a new tab.
+   The page itself handles the download — clicking the "Download PDF"
+   button on that page uses html2pdf.js to save the file directly,
+   no print dialog needed. */
+export const downloadPlaylistPdf = (id, name) => {
   const token = localStorage.getItem('ncc_user_token');
   const base  = (process.env.REACT_APP_API_URL || '/api').replace(/\/api\/?$/, '');
-  const url   = `${base}/api/playlists/${id}/pdf-download`;
-
-  const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || 'Failed to download PDF');
-  }
-
-  const blob = await res.blob();
-  const link = document.createElement('a');
-  link.href     = URL.createObjectURL(blob);
-  link.download = `${name || 'playlist'}.pdf`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(link.href);
+  const url   = `${base}/api/playlists/${id}/pdf`;
+  window.open(`${url}?token=${token}`, '_blank');
 };
 
 /* ── Audio file upload (admin only) ───────────────────────────────── */
