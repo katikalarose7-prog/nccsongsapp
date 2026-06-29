@@ -11,7 +11,7 @@ const { sendNewSongEmail, sendBulkNewSongsEmail } = require('../utils/email');
 const router  = express.Router();
 const upload  = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
-const CATEGORIES = ['worship','praise','christmas','resurrection','communion','wedding','death','thanksgiving','SundaySchool','other'];
+const CATEGORIES = ['worship','praise','christmas','resurrection','communion','wedding','death','thanksgiving','sundayschoolsongs','other'];
 const LANGUAGES  = ['english','telugu','hindi','multilingual'];
 
 const validate = (req, res, next) => {
