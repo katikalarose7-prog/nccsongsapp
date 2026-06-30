@@ -193,12 +193,12 @@ function CardPlaylistPicker({ songId, onClose }) {
         </div>
       )}
 
-      <form onSubmit={handleCreate} style={{ display: 'flex', gap: 5, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+      <form onSubmit={handleCreate} style={{ display: 'flex', gap: 3, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
         <input
           value={newName} onChange={e => setNewName(e.target.value)}
           placeholder="New playlist…"
           style={{
-            flex: 1, padding: '6px 8px', fontSize: 12,
+            flex: 1, padding: '6px 8px', fontSize: 10,
             border: '1.5px solid var(--border)', borderRadius: 7, outline: 'none',
           }}
           onClick={e => e.stopPropagation()}
