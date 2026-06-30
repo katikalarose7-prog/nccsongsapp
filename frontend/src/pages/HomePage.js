@@ -11,7 +11,7 @@ import AccountMenu from '../components/AccountMenu';
 import InstallAppButton from '../components/InstallAppButton';
 
 const LANGUAGES  = ['All','English','Telugu','Hindi','Multilingual'];
-const CATEGORIES = ['All','Worship','Praise','Christmas','Resurrection','Communion','Wedding','Death','Thanksgiving','SundaySchoolSongs','Other'];
+const CATEGORIES = ['All','Worship','Praise','Christmas','Resurrection','Communion','Wedding','GoodFriday','Thanksgiving','SundaySchoolSongs','Other'];
 
 const GUEST_FAV_KEY  = 'ncc_guest_favourites';
 const getGuestFavs  = () => { try { return JSON.parse(localStorage.getItem(GUEST_FAV_KEY) || '[]'); } catch { return []; } };
