@@ -1,6 +1,7 @@
 const express = require('express');
 const multer  = require('multer');
 const XLSX    = require('xlsx');
+const Fuse    = require('fuse.js'); // npm install fuse.js
 const { body, validationResult } = require('express-validator');
 const Song    = require('../models/Song');
 const User    = require('../models/User');
@@ -26,12 +27,56 @@ const validate = (req, res, next) => {
 // and unintended pattern injection via the search box.
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+/* ─── FUZZY SEARCH INDEX ────────────────────────────────────────────
+   Regex search only catches exact substrings, so typos ("worhsip",
+   "amazng grase") return nothing. Fuse.js gives us typo-tolerant
+   scored matching. Keeping a full collection scan + Fuse index alive
+   per-request would be slow, so we cache the index in memory and
+   rebuild it: (a) every FUSE_TTL_MS on a cache-miss, or (b) immediately
+   whenever an admin write happens (create/update/delete/bulk-import),
+   so search never serves badly stale results after an edit. */
+
+const FUSE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+let fuseCache = { instance: null, builtAt: 0 };
+
+async function getFuseIndex() {
+  const isFresh = fuseCache.instance && (Date.now() - fuseCache.builtAt) < FUSE_TTL_MS;
+  if (isFresh) return fuseCache.instance;
+
+  const songs = await Song.find({ isActive: true })
+    .select('title titleTelugu titleHindi lyrics lyricsTelugu lyricsHindi tags category language songNumber')
+    .lean();
+
+  const fuse = new Fuse(songs, {
+    includeScore: true,
+    ignoreLocation: true,   // match anywhere in the field, not just near the start
+    minMatchCharLength: 2,
+    threshold: 0.38,        // 0.0 = exact match only, 1.0 = match anything. 0.38 tolerates a couple typos on short titles.
+    keys: [
+      { name: 'title',        weight: 0.35 },
+      { name: 'titleTelugu',  weight: 0.2  },
+      { name: 'titleHindi',   weight: 0.2  },
+      { name: 'tags',         weight: 0.15 },
+      { name: 'lyrics',       weight: 0.05 },
+      { name: 'lyricsTelugu', weight: 0.025 },
+      { name: 'lyricsHindi',  weight: 0.025 },
+    ],
+  });
+
+  fuseCache = { instance: fuse, builtAt: Date.now() };
+  return fuse;
+}
+
+// Call this after any create/update/delete so fuzzy results reflect
+// the change immediately instead of waiting up to FUSE_TTL_MS.
+const invalidateFuseCache = () => { fuseCache.instance = null; };
+
 /* ─── PUBLIC ROUTES ────────────────────────────────────────────── */
 
-// GET /api/songs  — list + search + filter
+// GET /api/songs  — list + search (exact, with automatic fuzzy fallback) + filter
 router.get('/', async (req, res) => {
   try {
-    const { q, language, category, page = 1, limit = 20, sort = 'songNumber' } = req.query;
+    const { q, language, category, page = 1, limit = 20, sort = 'songNumber', fuzzy } = req.query;
 
     const safePage  = Math.max(1, parseInt(page, 10) || 1);
     const safeLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
@@ -40,34 +85,65 @@ router.get('/', async (req, res) => {
     if (language && LANGUAGES.includes(language)) filter.language = language;
     if (category && CATEGORIES.includes(category)) filter.category = category;
 
-    let songs, total;
+    let songs, total, usedFuzzy = false;
 
     if (q && q.trim()) {
-      const safeQuery = escapeRegex(q.trim().slice(0, 100)); // cap length too
-      const regex = new RegExp(safeQuery, 'i');
+      const trimmedQ = q.trim().slice(0, 100);
+      const forceFuzzy = fuzzy === 'true' || fuzzy === '1';
 
-      const langMatch = LANGUAGES.find(l => l.match(regex));
-      const catMatch  = CATEGORIES.find(c => c.match(regex));
+      if (!forceFuzzy) {
+        // Try exact/substring match first — it's index-friendly and cheap.
+        const safeQuery = escapeRegex(trimmedQ);
+        const regex = new RegExp(safeQuery, 'i');
 
-      const orConditions = [
-        { title:        regex },
-        { titleTelugu:  regex },
-        { titleHindi:   regex },
-        { lyrics:       regex },
-        { lyricsTelugu: regex },
-        { lyricsHindi:  regex },
-        { tags:         regex },
-        { category:     regex },
-      ];
-      if (langMatch) orConditions.push({ language: langMatch });
-      if (catMatch)  orConditions.push({ category: catMatch });
+        const langMatch = LANGUAGES.find(l => l.match(regex));
+        const catMatch  = CATEGORIES.find(c => c.match(regex));
 
-      const searchFilter = { ...filter, $or: orConditions };
-      total = await Song.countDocuments(searchFilter);
-      songs = await Song.find(searchFilter)
-        .skip((safePage - 1) * safeLimit)
-        .limit(safeLimit)
-        .select('-__v');
+        const orConditions = [
+          { title:        regex },
+          { titleTelugu:  regex },
+          { titleHindi:   regex },
+          { lyrics:       regex },
+          { lyricsTelugu: regex },
+          { lyricsHindi:  regex },
+          { tags:         regex },
+          { category:     regex },
+        ];
+        if (langMatch) orConditions.push({ language: langMatch });
+        if (catMatch)  orConditions.push({ category: catMatch });
+
+        const searchFilter = { ...filter, $or: orConditions };
+        total = await Song.countDocuments(searchFilter);
+        songs = await Song.find(searchFilter)
+          .skip((safePage - 1) * safeLimit)
+          .limit(safeLimit)
+          .select('-__v');
+      }
+
+      // Fuzzy path: either explicitly requested, or exact search came up empty
+      // (e.g. the user typo'd the title and no substring matched at all).
+      if (forceFuzzy || !total) {
+        usedFuzzy = true;
+        const fuse = await getFuseIndex();
+        let results = fuse.search(trimmedQ);
+
+        // Fuse doesn't know about our language/category filters, apply them here.
+        results = results.filter(({ item }) =>
+          (!filter.language || item.language === filter.language) &&
+          (!filter.category || item.category === filter.category)
+        );
+
+        total = results.length;
+        const pageSlice = results.slice((safePage - 1) * safeLimit, safePage * safeLimit);
+
+        // Fuse index only holds a lean projection — re-fetch full docs,
+        // preserving Fuse's relevance order.
+        const ids = pageSlice.map(r => r.item._id);
+        const fullDocs = await Song.find({ _id: { $in: ids } }).select('-__v');
+        songs = ids
+          .map(id => fullDocs.find(d => String(d._id) === String(id)))
+          .filter(Boolean);
+      }
     } else {
       const sortObj = sort === 'title'  ? { title: 1 }
                     : sort === 'newest' ? { createdAt: -1 }
@@ -80,7 +156,7 @@ router.get('/', async (req, res) => {
         .select('-__v');
     }
 
-    res.json({ success: true, total, page: safePage, songs });
+    res.json({ success: true, total, page: safePage, fuzzy: usedFuzzy, songs });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Could not load songs' });
   }
@@ -178,6 +254,7 @@ const songValidation = [
 router.post('/', requireAdmin, songValidation, validate, async (req, res) => {
   try {
     const song = await Song.create(req.body);
+    invalidateFuseCache(); // new song should be findable right away, even via fuzzy search
 
     // Notify subscribed users in the background — never blocks the response
     User.find({ isActive: true, emailVerified: true, emailNotifications: true })
@@ -198,6 +275,7 @@ router.put('/:id', requireAdmin, songValidation, validate, async (req, res) => {
   try {
     const song = await Song.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!song) return res.status(404).json({ success: false, message: 'Song not found' });
+    invalidateFuseCache(); // edited title/lyrics/tags should be reflected immediately
     res.json({ success: true, song });
   } catch (err) {
     res.status(400).json({ success: false, message: 'Could not update song' });
@@ -208,6 +286,7 @@ router.put('/:id', requireAdmin, songValidation, validate, async (req, res) => {
 router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     await Song.findByIdAndUpdate(req.params.id, { isActive: false });
+    invalidateFuseCache(); // removed song shouldn't still surface via fuzzy search
     res.json({ success: true, message: 'Song removed' });
   } catch {
     res.status(500).json({ success: false, message: 'Could not remove song' });
@@ -240,6 +319,7 @@ router.post('/bulk-import', requireAdmin, upload.single('file'), async (req, res
 
     if (!songs.length) return res.status(400).json({ success: false, message: 'No valid songs found' });
     const inserted = await Song.insertMany(songs, { ordered: false });
+    invalidateFuseCache(); // bulk-imported songs should be searchable immediately
 
     // Notify subscribed users with ONE summary email listing all the
     // newly imported songs — never one email per song, which would
