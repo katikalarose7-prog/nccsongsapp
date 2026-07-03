@@ -23,18 +23,22 @@ const validate = (req, res, next) => {
 };
 
 // Escapes regex special characters so user search input can never be
-// interpreted as a regex pattern — prevents ReDoS (catastrophic backtracking)
-// and unintended pattern injection via the search box.
+// interpreted as a regex pattern — kept around for the songNumber /
+// exact-tag lookups below, which are cheap enough to stay as regex.
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/* ─── FUZZY SEARCH INDEX ────────────────────────────────────────────
-   Regex search only catches exact substrings, so typos ("worhsip",
-   "amazng grase") return nothing. Fuse.js gives us typo-tolerant
-   scored matching. Keeping a full collection scan + Fuse index alive
-   per-request would be slow, so we cache the index in memory and
-   rebuild it: (a) every FUSE_TTL_MS on a cache-miss, or (b) immediately
-   whenever an admin write happens (create/update/delete/bulk-import),
-   so search never serves badly stale results after an edit. */
+/* ─── FUZZY SEARCH INDEX (typo-tolerant fallback only) ─────────────
+   $text search (see below) now handles the normal case — exact and
+   near-exact matches — using a real MongoDB index, so it's fast even
+   as the collection grows. Fuse.js is kept ONLY as a fallback for
+   genuine typos that $text's stemming/tokenizing won't catch
+   (e.g. "worhsip", transposed letters).
+
+   The Fuse index used to pull full lyrics fields for every song into
+   memory, which made cache (re)builds slow and memory-heavy. Since
+   $text now covers lyrics search with an index, Fuse only needs
+   title/tag/metadata fields — much smaller payload, much faster to
+   build. */
 
 const FUSE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 let fuseCache = { instance: null, builtAt: 0 };
@@ -44,7 +48,7 @@ async function getFuseIndex() {
   if (isFresh) return fuseCache.instance;
 
   const songs = await Song.find({ isActive: true })
-    .select('title titleTelugu titleHindi lyrics lyricsTelugu lyricsHindi tags category language songNumber')
+    .select('title titleTelugu titleHindi tags category language songNumber')
     .lean();
 
   const fuse = new Fuse(songs, {
@@ -53,13 +57,10 @@ async function getFuseIndex() {
     minMatchCharLength: 2,
     threshold: 0.38,        // 0.0 = exact match only, 1.0 = match anything. 0.38 tolerates a couple typos on short titles.
     keys: [
-      { name: 'title',        weight: 0.35 },
-      { name: 'titleTelugu',  weight: 0.2  },
-      { name: 'titleHindi',   weight: 0.2  },
-      { name: 'tags',         weight: 0.15 },
-      { name: 'lyrics',       weight: 0.05 },
-      { name: 'lyricsTelugu', weight: 0.025 },
-      { name: 'lyricsHindi',  weight: 0.025 },
+      { name: 'title',       weight: 0.45 },
+      { name: 'titleTelugu', weight: 0.25 },
+      { name: 'titleHindi',  weight: 0.25 },
+      { name: 'tags',        weight: 0.05 },
     ],
   });
 
@@ -73,7 +74,7 @@ const invalidateFuseCache = () => { fuseCache.instance = null; };
 
 /* ─── PUBLIC ROUTES ────────────────────────────────────────────── */
 
-// GET /api/songs  — list + search (exact, with automatic fuzzy fallback) + filter
+// GET /api/songs  — list + search (indexed text search, with fuzzy fallback) + filter
 router.get('/', async (req, res) => {
   try {
     const { q, language, category, page = 1, limit = 20, sort = 'songNumber', fuzzy } = req.query;
@@ -92,36 +93,38 @@ router.get('/', async (req, res) => {
       const forceFuzzy = fuzzy === 'true' || fuzzy === '1';
 
       if (!forceFuzzy) {
-        // Try exact/substring match first — it's index-friendly and cheap.
-        const safeQuery = escapeRegex(trimmedQ);
-        const regex = new RegExp(safeQuery, 'i');
+        // Indexed text search — uses the 'SongTextIndex' text index
+        // (see models/Song.js) instead of a full-collection regex scan.
+        // Also lets a query like "worship" or "telugu" match the
+        // language/category fields directly via the small $or below,
+        // which stays index-friendly since it's an equality check,
+        // not a regex scan.
+        const langMatch = LANGUAGES.find(l => l === trimmedQ.toLowerCase());
+        const catMatch  = CATEGORIES.find(c => c === trimmedQ.toLowerCase());
 
-        const langMatch = LANGUAGES.find(l => l.match(regex));
-        const catMatch  = CATEGORIES.find(c => c.match(regex));
+        const searchFilter = { ...filter };
+        if (langMatch || catMatch) {
+          searchFilter.$or = [
+            { $text: { $search: trimmedQ } },
+            ...(langMatch ? [{ language: langMatch }] : []),
+            ...(catMatch  ? [{ category: catMatch }]  : []),
+          ];
+        } else {
+          searchFilter.$text = { $search: trimmedQ };
+        }
 
-        const orConditions = [
-          { title:        regex },
-          { titleTelugu:  regex },
-          { titleHindi:   regex },
-          { lyrics:       regex },
-          { lyricsTelugu: regex },
-          { lyricsHindi:  regex },
-          { tags:         regex },
-          { category:     regex },
-        ];
-        if (langMatch) orConditions.push({ language: langMatch });
-        if (catMatch)  orConditions.push({ category: catMatch });
-
-        const searchFilter = { ...filter, $or: orConditions };
         total = await Song.countDocuments(searchFilter);
-        songs = await Song.find(searchFilter)
+        songs = await Song.find(searchFilter, { score: { $meta: 'textScore' } })
+          .sort({ score: { $meta: 'textScore' } })
           .skip((safePage - 1) * safeLimit)
           .limit(safeLimit)
-          .select('-__v');
+          .select('-__v')
+          .lean();
       }
 
-      // Fuzzy path: either explicitly requested, or exact search came up empty
-      // (e.g. the user typo'd the title and no substring matched at all).
+      // Fuzzy path: either explicitly requested, or the indexed text
+      // search came up completely empty (e.g. a typo $text's stemming
+      // couldn't bridge).
       if (forceFuzzy || !total) {
         usedFuzzy = true;
         const fuse = await getFuseIndex();
@@ -139,7 +142,7 @@ router.get('/', async (req, res) => {
         // Fuse index only holds a lean projection — re-fetch full docs,
         // preserving Fuse's relevance order.
         const ids = pageSlice.map(r => r.item._id);
-        const fullDocs = await Song.find({ _id: { $in: ids } }).select('-__v');
+        const fullDocs = await Song.find({ _id: { $in: ids } }).select('-__v').lean();
         songs = ids
           .map(id => fullDocs.find(d => String(d._id) === String(id)))
           .filter(Boolean);
@@ -153,7 +156,8 @@ router.get('/', async (req, res) => {
         .sort(sortObj)
         .skip((safePage - 1) * safeLimit)
         .limit(safeLimit)
-        .select('-__v');
+        .select('-__v')
+        .lean();
     }
 
     res.json({ success: true, total, page: safePage, fuzzy: usedFuzzy, songs });
@@ -170,7 +174,7 @@ router.get('/recommendations', optionalUser, async (req, res) => {
     let songs;
     if (req.user && req.user.history.length > 0) {
       const recentSongIds = req.user.history.slice(-20).map(h => h.song);
-      const recentSongs = await Song.find({ _id: { $in: recentSongIds } }).select('category language');
+      const recentSongs = await Song.find({ _id: { $in: recentSongIds } }).select('category language').lean();
 
       const categoryCounts = {};
       const langCounts = {};
@@ -187,15 +191,15 @@ router.get('/recommendations', optionalUser, async (req, res) => {
         isActive: true,
         _id: { $nin: alreadyPlayed },
         $or: [{ category: topCategory }, { language: topLanguage }],
-      }).sort({ viewCount: -1 }).limit(10);
+      }).sort({ viewCount: -1 }).limit(10).lean();
 
       if (songs.length < 5) {
         const extra = await Song.find({ isActive: true, _id: { $nin: [...alreadyPlayed, ...songs.map(s=>s._id)] } })
-          .sort({ viewCount: -1 }).limit(10 - songs.length);
+          .sort({ viewCount: -1 }).limit(10 - songs.length).lean();
         songs = [...songs, ...extra];
       }
     } else {
-      songs = await Song.find({ isActive: true }).sort({ viewCount: -1 }).limit(10);
+      songs = await Song.find({ isActive: true }).sort({ viewCount: -1 }).limit(10).lean();
     }
     res.json({ success: true, songs });
   } catch {
@@ -210,7 +214,7 @@ router.get('/recommendations', optionalUser, async (req, res) => {
 router.get('/me/recent', requireUser, async (req, res) => {
   const recent = [...req.user.history].reverse().slice(0, 20);
   const songIds = recent.map(h => h.song);
-  const songs = await Song.find({ _id: { $in: songIds }, isActive: true });
+  const songs = await Song.find({ _id: { $in: songIds }, isActive: true }).lean();
   // preserve most-recent-first order
   const ordered = songIds.map(id => songs.find(s => String(s._id) === String(id))).filter(Boolean);
   res.json({ success: true, songs: ordered });
@@ -222,14 +226,15 @@ router.get('/:id', optionalUser, async (req, res) => {
     const song = await Song.findById(req.params.id);
     if (!song || !song.isActive) return res.status(404).json({ success: false, message: 'Song not found' });
 
+    // View count / history updates don't need to block the response —
+    // the client just needs the song data as fast as possible.
     song.viewCount += 1;
-    await song.save();
+    song.save().catch(() => {});
 
-    // Record listening history for logged-in users (capped to last 100 entries)
     if (req.user) {
       req.user.history.push({ song: song._id, playedAt: new Date() });
       if (req.user.history.length > 100) req.user.history = req.user.history.slice(-100);
-      await req.user.save();
+      req.user.save().catch(() => {});
     }
 
     res.json({ success: true, song });

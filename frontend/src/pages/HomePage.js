@@ -238,7 +238,9 @@ export default function HomePage() {
   const [playlistPickerFor, setPlaylistPickerFor] = useState(null);
   const audioRef = useRef(null);
   const searchRef = useRef(null);
-  const dq = useDebounce(query, 380);
+  // Reduced from 380ms — still enough to avoid spamming requests on
+  // every keystroke, but noticeably snappier.
+  const dq = useDebounce(query, 200);
 
   useEffect(() => {
     if (user) {
@@ -248,22 +250,37 @@ export default function HomePage() {
     }
   }, [user]);
 
-  const load = useCallback(async () => {
+  // Cancels in-flight requests when filters change again before the
+  // previous one resolves — without this, a slow older request could
+  // resolve after a newer one and overwrite fresh results with stale
+  // ones, which makes the page feel stuck/delayed.
+  useEffect(() => {
+    const controller = new AbortController();
     setLoading(true);
-    try {
-      const params = { page, limit: 18, sort };
-      if (dq)             params.q        = dq;
-      if (lang !== 'All') params.language = lang.toLowerCase();
-      if (cat  !== 'All') params.category = cat.toLowerCase();
-      const res = await fetchSongs(params);
-      const normalized = Array.isArray(res) ? { songs: res, total: res.length } : res;
-      setData(normalized);
-    } catch (e) { console.error(e); setData({ songs: [], total: 0 }); }
-    finally { setLoading(false); }
+
+    (async () => {
+      try {
+        const params = { page, limit: 18, sort, signal: controller.signal };
+        if (dq)             params.q        = dq;
+        if (lang !== 'All') params.language = lang.toLowerCase();
+        if (cat  !== 'All') params.category = cat.toLowerCase();
+        const res = await fetchSongs(params);
+        const normalized = Array.isArray(res) ? { songs: res, total: res.length } : res;
+        setData(normalized);
+      } catch (e) {
+        if (e.name !== 'AbortError' && e.code !== 'ERR_CANCELED') {
+          console.error(e);
+          setData({ songs: [], total: 0 });
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    })();
+
+    return () => controller.abort();
   }, [dq, lang, cat, sort, page]);
 
   useEffect(() => { setPage(1); }, [dq, lang, cat, sort]);
-  useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
     if (!showFavs || !favs.length) { setFavSongs([]); return; }
@@ -290,20 +307,29 @@ export default function HomePage() {
     }
   };
 
+  // Accepts either a song id (string) or a full song object. When a
+  // full object is passed (i.e. the user clicked a card we already
+  // rendered), we show it in the modal immediately instead of waiting
+  // on the network — the modal opens instantly with title/badges/etc,
+  // then upgrades to full detail (lyrics/chords/audio) once the fetch
+  // resolves. When only an id is available (e.g. restoring from the
+  // ?song= URL param on page load), we fall back to showing "Loading…"
+  // until the fetch completes, same as before.
   const openSong = useCallback(async (idOrSong) => {
-  const id = typeof idOrSong === 'string' ? idOrSong : idOrSong._id;
-  setSelected(id); setTab('english'); setShowChords(false); setAudioPlaying(false);
-  setPlaylistPickerFor(null);
-  if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-  document.body.style.overflow = 'hidden';
-  setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('song', id); return p; }, { replace: true });
+    const isObject = typeof idOrSong === 'object' && idOrSong !== null;
+    const id = isObject ? idOrSong._id : idOrSong;
 
-  // Show what we already have immediately, so the modal isn't blank/loading
-  setDetail(typeof idOrSong === 'string' ? null : idOrSong);
+    setSelected(id); setTab('english'); setShowChords(false); setAudioPlaying(false);
+    setPlaylistPickerFor(null);
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    document.body.style.overflow = 'hidden';
+    setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('song', id); return p; }, { replace: true });
 
-  const res = await fetchSong(id);
-  setDetail(res.song); // replace with full data (lyrics, chords, audio, etc.)
-}, [setSearchParams]);
+    setDetail(isObject ? idOrSong : null);
+
+    const res = await fetchSong(id);
+    setDetail(res.song);
+  }, [setSearchParams]);
 
   const closeSong = useCallback(() => {
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
@@ -602,15 +628,15 @@ export default function HomePage() {
                 <div style={{ padding: '10px 26px 0' }}><AdBanner /></div>
                 <div className="modal-tabs">
                   {[['english','English'],['telugu','తెలుగు'],['hindi','हिन्दी']].map(([key, label]) => (
-                    (key === 'english' ? detail.lyrics : key === 'telugu' ? detail.lyricsTelugu : detail.lyricsHindi) && (
+                    (key === 'english' ? detail.lyrics : key === 'telugu' ? detail.lyricsTelugu : detail.lyricsHindi) ? (
                       <button key={key} className={`modal-tab ${tab === key ? 'active' : ''}`} onClick={() => setTab(key)}>{label}</button>
-                    )
+                    ) : null
                   ))}
                 </div>
                 <div className="modal-body">
-                  {tab === 'english' && <pre className="lyrics-block">{detail.lyrics}</pre>}
-                  {tab === 'telugu'  && <pre className="lyrics-block telugu">{detail.lyricsTelugu}</pre>}
-                  {tab === 'hindi'   && <pre className="lyrics-block hindi">{detail.lyricsHindi}</pre>}
+                  {tab === 'english' && (detail.lyrics ? <pre className="lyrics-block">{detail.lyrics}</pre> : <div style={{ opacity: 0.5, fontSize: 13 }}>Loading lyrics…</div>)}
+                  {tab === 'telugu'  && (detail.lyricsTelugu ? <pre className="lyrics-block telugu">{detail.lyricsTelugu}</pre> : <div style={{ opacity: 0.5, fontSize: 13 }}>Loading lyrics…</div>)}
+                  {tab === 'hindi'   && (detail.lyricsHindi ? <pre className="lyrics-block hindi">{detail.lyricsHindi}</pre> : <div style={{ opacity: 0.5, fontSize: 13 }}>Loading lyrics…</div>)}
                 </div>
               </>
             )}
