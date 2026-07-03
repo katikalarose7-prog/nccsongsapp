@@ -102,6 +102,7 @@ img { max-width: 100%; display: block; }
   background: linear-gradient(135deg, var(--brand-deep) 0%, var(--brand-mid) 100%);
   position: sticky; top: 0; z-index: 100;
   box-shadow: 0 2px 20px rgba(0,0,0,0.25);
+  padding-top: env(safe-area-inset-top);
 }
 .header-inner {
   display: flex; align-items: center; gap: 14px;
@@ -171,8 +172,7 @@ img { max-width: 100%; display: block; }
   border-bottom: 1px solid var(--border);
   padding: 10px 20px;
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  position: sticky; top: 66px; z-index: 90;
-  box-shadow: var(--shadow-sm);
+position: sticky; top: calc(66px + env(safe-area-inset-top, 0px)); z-index: 90;  box-shadow: var(--shadow-sm);
 }
 .filter-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; flex-shrink: 0; }
 .filter-chip {
@@ -482,7 +482,7 @@ tr:hover td { background: var(--surface-1); }
   .filter-chip { white-space: nowrap; flex-shrink: 0; }
 
   /* Modal — full screen on mobile */
-  .modal-overlay { padding: 0; align-items: flex-end; }
+.modal-overlay { padding: 0; align-items: flex-end; padding-bottom: env(safe-area-inset-bottom, 0px); }
   .modal {
     border-radius: 24px 24px 0 0;
     max-height: 92vh;
