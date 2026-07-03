@@ -414,7 +414,7 @@ export default function HomePage() {
               onMouseOver={e => { if (!isPickerOpen) { e.currentTarget.style.color = 'var(--brand-light)'; }}}
               onMouseOut={e  => { if (!isPickerOpen) { e.currentTarget.style.color = 'var(--text-muted)'; }}}
             >
-              <ListPlus size={15} />
+              SignIn<ListPlus size={15} />
             </button>
 
             {/* Inline playlist picker dropdown */}
