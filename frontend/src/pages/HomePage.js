@@ -290,15 +290,20 @@ export default function HomePage() {
     }
   };
 
-  const openSong = useCallback(async (id) => {
-    setSelected(id); setTab('english'); setShowChords(false); setAudioPlaying(false);
-    setPlaylistPickerFor(null);
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-    document.body.style.overflow = 'hidden';
-    setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('song', id); return p; }, { replace: true });
-    const res = await fetchSong(id);
-    setDetail(res.song);
-  }, [setSearchParams]);
+  const openSong = useCallback(async (idOrSong) => {
+  const id = typeof idOrSong === 'string' ? idOrSong : idOrSong._id;
+  setSelected(id); setTab('english'); setShowChords(false); setAudioPlaying(false);
+  setPlaylistPickerFor(null);
+  if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+  document.body.style.overflow = 'hidden';
+  setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('song', id); return p; }, { replace: true });
+
+  // Show what we already have immediately, so the modal isn't blank/loading
+  setDetail(typeof idOrSong === 'string' ? null : idOrSong);
+
+  const res = await fetchSong(id);
+  setDetail(res.song); // replace with full data (lyrics, chords, audio, etc.)
+}, [setSearchParams]);
 
   const closeSong = useCallback(() => {
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
@@ -343,8 +348,8 @@ export default function HomePage() {
     const isPickerOpen = playlistPickerFor === song._id;
 
     return (
-      <div className="song-card" onClick={() => { setPlaylistPickerFor(null); openSong(song._id); }}
-        role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && openSong(song._id)}>
+      <div className="song-card" onClick={() => { setPlaylistPickerFor(null); openSong(song); }}
+        role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && openSong(song)}>
         <div className="song-card-accent" />
 
         {/* Favourite button — top right */}
