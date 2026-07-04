@@ -575,10 +575,38 @@ export default function HomePage() {
                     {totalPages > 1 && (
                       <div className="pagination">
                         <button className="page-btn" disabled={page === 1} onClick={() => setPage(p => p - 1)}><ChevronLeft size={15} /></button>
-                        {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => i + 1).map(p => (
-                          <button key={p} className={`page-btn ${page === p ? 'active' : ''}`}
-                            onClick={() => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>{p}</button>
-                        ))}
+                        {(() => {
+                          // Sliding window of page-number buttons, centered on
+                          // the current page, clamped to [1, totalPages]. Fixes
+                          // the old version which always rendered buttons 1-7
+                          // no matter what page you were actually on.
+                          const maxButtons = 7;
+                          let start = Math.max(1, page - Math.floor(maxButtons / 2));
+                          let end   = Math.min(totalPages, start + maxButtons - 1);
+                          start     = Math.max(1, end - maxButtons + 1);
+                          const pageNumbers = Array.from({ length: end - start + 1 }, (_, i) => start + i);
+
+                          return (
+                            <>
+                              {start > 1 && (
+                                <>
+                                  <button className="page-btn" onClick={() => { setPage(1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>1</button>
+                                  {start > 2 && <span className="page-ellipsis">…</span>}
+                                </>
+                              )}
+                              {pageNumbers.map(p => (
+                                <button key={p} className={`page-btn ${page === p ? 'active' : ''}`}
+                                  onClick={() => { setPage(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>{p}</button>
+                              ))}
+                              {end < totalPages && (
+                                <>
+                                  {end < totalPages - 1 && <span className="page-ellipsis">…</span>}
+                                  <button className="page-btn" onClick={() => { setPage(totalPages); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>{totalPages}</button>
+                                </>
+                              )}
+                            </>
+                          );
+                        })()}
                         <button className="page-btn" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}><ChevronRight size={15} /></button>
                       </div>
                     )}
