@@ -136,7 +136,7 @@ img { max-width: 100%; display: block; }
 }
 .search-input::placeholder { color: rgba(255,255,255,0.5); }
 .search-input:focus { border-color: var(--brand-gold); background: rgba(255,255,255,0.16); }
-.search-icon  { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.55); pointer-events: none; }
+.search-icon  { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: rgba(255,255,255,0.55); pointer-events: none;  z-index: 1; }
 .search-clear { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: rgba(255,255,255,0.6); cursor: pointer; display: flex; padding: 2px; }
 .header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
 
