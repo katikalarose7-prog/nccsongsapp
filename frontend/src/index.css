@@ -566,7 +566,6 @@ tr:hover td { background: var(--surface-1); }
   .header-search-desktop { display: none !important; }
 
   .fav-label    { display: none; }
-  .signin-label { display: none; }
 
   /* Tighter logo */
   .header-logo-name { font-size: 13px; }
