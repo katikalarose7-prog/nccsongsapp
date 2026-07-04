@@ -222,7 +222,7 @@ export default function HomePage() {
   const [query, setQuery]             = useState('');
   const [lang, setLang]               = useState('All');
   const [cat, setCat]                 = useState('All');
-  const [sort, setSort]               = useState('songNumber');
+  const [sort, setSort]               = useState('title');
   const [page, setPage]               = useState(1);
   const [data, setData] = useState({ songs: [], page: 1, pages: 1, total: 0 });
   const [loading, setLoading]         = useState(true);
@@ -414,7 +414,7 @@ export default function HomePage() {
               onMouseOver={e => { if (!isPickerOpen) { e.currentTarget.style.color = 'var(--brand-light)'; }}}
               onMouseOut={e  => { if (!isPickerOpen) { e.currentTarget.style.color = 'var(--text-muted)'; }}}
             >
-              SignIn<ListPlus size={15} />
+              <ListPlus size={15} />
             </button>
 
             {/* Inline playlist picker dropdown */}
@@ -554,8 +554,8 @@ export default function HomePage() {
                   </select>
                 </div>
                 <select className="filter-sort" value={sort} onChange={(e) => setSort(e.target.value)}>
-                  <option value="songNumber">By No.</option>
                   <option value="title">A–Z</option>
+                  <option value="songNumber">By No.</option>
                   <option value="newest">Newest</option>
                 </select>
                 {!loading && <span className="filter-count">{data?.total || 0} song{(data?.total || 0) !== 1 ? "s" : ""}</span>}

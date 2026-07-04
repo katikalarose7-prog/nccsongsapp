@@ -482,13 +482,14 @@ tr:hover td { background: var(--surface-1); }
   .filter-chip { white-space: nowrap; flex-shrink: 0; }
 
   /* Modal — full screen on mobile */
-.modal-overlay { padding: 0; align-items: flex-end; padding-bottom: env(safe-area-inset-bottom, 0px); }
-  .modal {
-    border-radius: 24px 24px 0 0;
-    max-height: 92vh;
-    width: 100%;
-    max-width: 100%;
-  }
+.modal-overlay { padding: 0; align-items: flex-end; }
+.modal {
+  border-radius: 24px 24px 0 0;
+  max-height: 92vh;
+  width: 100%;
+  max-width: 100%;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
   .modal-header { padding: 22px 18px 16px; }
   .modal-header h2 { font-size: 18px; padding-right: 40px; }
   .modal-action-row {
@@ -618,7 +619,10 @@ tr:hover td { background: var(--surface-1); }
   .desktop-filters {
     display: none;
   }
-
+/* iPhone safe-area: modal body padding above home indicator */
+.modal-body {
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
   .mobile-filters {
     display: flex;
     gap: 8px;
@@ -638,5 +642,15 @@ tr:hover td { background: var(--surface-1); }
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+  }
+}
+
+/* iPhone home indicator safe area — applies to modal action row and body */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .modal-action-row {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .modal-tabs {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }

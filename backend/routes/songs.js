@@ -15,6 +15,12 @@ const upload  = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10
 const CATEGORIES = ['worship','praise','christmas','resurrection','communion','wedding','goodfriday','thanksgiving','sundayschoolsongs','other'];
 const LANGUAGES  = ['english','telugu','hindi','multilingual'];
 
+// Case-insensitive collation so "A–Z" sort produces a real human
+// alphabetical order (Aaron, apple, Zebra) instead of Mongo's default
+// byte-order sort, which puts every uppercase letter before any
+// lowercase one (A, B, ... Z, a, b, ...).
+const CASE_INSENSITIVE_COLLATION = { locale: 'en', strength: 2 };
+
 const validate = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty())
@@ -77,7 +83,7 @@ const invalidateFuseCache = () => { fuseCache.instance = null; };
 // GET /api/songs  — list + search (indexed text search, with fuzzy fallback) + filter
 router.get('/', async (req, res) => {
   try {
-    const { q, language, category, page = 1, limit = 20, sort = 'songNumber', fuzzy } = req.query;
+    const { q, language, category, page = 1, limit = 20, sort = 'title', fuzzy } = req.query;
 
     const safePage  = Math.max(1, parseInt(page, 10) || 1);
     const safeLimit = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
@@ -151,13 +157,20 @@ router.get('/', async (req, res) => {
       const sortObj = sort === 'title'  ? { title: 1 }
                     : sort === 'newest' ? { createdAt: -1 }
                     : { songNumber: 1 };
-      total = await Song.countDocuments(filter);
-      songs = await Song.find(filter)
+
+      // Only the title sort needs the case-insensitive collation —
+      // songNumber and createdAt are numeric/date fields, unaffected
+      // by letter casing.
+      let songsQuery = Song.find(filter)
         .sort(sortObj)
         .skip((safePage - 1) * safeLimit)
         .limit(safeLimit)
         .select('-__v')
         .lean();
+      if (sort === 'title') songsQuery = songsQuery.collation(CASE_INSENSITIVE_COLLATION);
+
+      total = await Song.countDocuments(filter);
+      songs = await songsQuery;
     }
 
     res.json({ success: true, total, page: safePage, fuzzy: usedFuzzy, songs });
