@@ -2,9 +2,10 @@ import axios from 'axios';
 
 const API = axios.create({
   baseURL: process.env.REACT_APP_API_URL || '/api',
-  timeout: 10000,
+  timeout: 20000, // Render free tier can take 20-30s+ to wake from a cold start
 });
 console.log('API URL:', process.env.REACT_APP_API_URL);
+
 /* Two separate auth tokens are kept — admins and regular users are
    completely different identities with different permissions, so they
    must never share a storage key (that would let an admin session leak
@@ -40,6 +41,23 @@ API.interceptors.response.use(
   }
 );
 
+// Retry once on timeout/network error — covers the case where the
+// Render backend is asleep and the first request times out before it
+// finishes waking up. The retry gives it a second window to respond.
+// Skipped for requests the caller intentionally cancelled (AbortController)
+// so we don't retry a request the user themselves navigated away from.
+API.interceptors.response.use(undefined, async (err) => {
+  const config = err.config;
+  const wasCancelled = err.code === 'ERR_CANCELED' || axios.isCancel(err);
+  const isTimeoutOrNetworkError = err.code === 'ECONNABORTED' || !err.response;
+
+  if (!wasCancelled && isTimeoutOrNetworkError && config && !config.__isRetry) {
+    config.__isRetry = true;
+    return API(config);
+  }
+  return Promise.reject(err);
+});
+
 // Simple in-memory cache for song list requests
 const cache = new Map();
 const CACHE_TTL = 30000; // 30 seconds
@@ -54,9 +72,14 @@ const cached = async (key, fn) => {
 
 /* ── Songs ─────────────────────────────────────────────────────── */
 export const fetchSongs = (params) => {
-  cache.clear(); // temporary — remove after fix confirmed
-  const key = JSON.stringify(params);
-  return cached(key, () => API.get('/songs', { params }).then(r => r.data));
+  // `signal` (from an AbortController) must be passed to axios as a
+  // top-level request option, NOT inside `params` — axios serializes
+  // everything in `params` into the URL query string. Pulling it out
+  // here fixes both: (1) cancellation actually works now, and
+  // (2) the URL no longer gets a stray `signal=...` query param.
+  const { signal, ...queryParams } = params;
+  const key = JSON.stringify(queryParams);
+  return cached(key, () => API.get('/songs', { params: queryParams, signal }).then(r => r.data));
 };
 
 export const fetchSong         = (id)       => API.get(`/songs/${id}`).then(r => r.data);
