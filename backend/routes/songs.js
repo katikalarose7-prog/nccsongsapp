@@ -21,6 +21,24 @@ const LANGUAGES  = ['english','telugu','hindi','multilingual'];
 // lowercase one (A, B, ... Z, a, b, ...).
 const CASE_INSENSITIVE_COLLATION = { locale: 'en', strength: 2 };
 
+/* ─── List payload trimming ──────────────────────────────────────
+   The homepage grid (SongCard) only ever shows a 110-char slice of
+   `lyrics` and never touches lyricsTelugu/lyricsHindi/chords at all —
+   those are only needed once a user opens a song (GET /songs/:id,
+   which is untouched and still returns everything). Sending full
+   multilingual lyrics + chords for every song in a paginated list
+   was pure wasted bandwidth on every homepage load. This excludes
+   the unused fields at the DB layer and truncates the one field the
+   card actually previews, before the response goes out. */
+const LIST_EXCLUDE = '-__v -lyricsTelugu -lyricsHindi -chords';
+const LIST_PREVIEW_LEN = 150;
+
+const trimForList = (songs) =>
+  songs.map((s) => ({
+    ...s,
+    lyrics: s.lyrics ? s.lyrics.slice(0, LIST_PREVIEW_LEN) : s.lyrics,
+  }));
+
 const validate = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty())
@@ -124,7 +142,7 @@ router.get('/', async (req, res) => {
           .sort({ score: { $meta: 'textScore' } })
           .skip((safePage - 1) * safeLimit)
           .limit(safeLimit)
-          .select('-__v')
+          .select(LIST_EXCLUDE)
           .lean();
       }
 
@@ -148,7 +166,7 @@ router.get('/', async (req, res) => {
         // Fuse index only holds a lean projection — re-fetch full docs,
         // preserving Fuse's relevance order.
         const ids = pageSlice.map(r => r.item._id);
-        const fullDocs = await Song.find({ _id: { $in: ids } }).select('-__v').lean();
+        const fullDocs = await Song.find({ _id: { $in: ids } }).select(LIST_EXCLUDE).lean();
         songs = ids
           .map(id => fullDocs.find(d => String(d._id) === String(id)))
           .filter(Boolean);
@@ -165,7 +183,7 @@ router.get('/', async (req, res) => {
         .sort(sortObj)
         .skip((safePage - 1) * safeLimit)
         .limit(safeLimit)
-        .select('-__v')
+        .select(LIST_EXCLUDE)
         .lean();
       if (sort === 'title') songsQuery = songsQuery.collation(CASE_INSENSITIVE_COLLATION);
 
@@ -173,7 +191,7 @@ router.get('/', async (req, res) => {
       songs = await songsQuery;
     }
 
-    res.json({ success: true, total, page: safePage, fuzzy: usedFuzzy, songs });
+    res.json({ success: true, total, page: safePage, fuzzy: usedFuzzy, songs: trimForList(songs) });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Could not load songs' });
   }
@@ -204,17 +222,17 @@ router.get('/recommendations', optionalUser, async (req, res) => {
         isActive: true,
         _id: { $nin: alreadyPlayed },
         $or: [{ category: topCategory }, { language: topLanguage }],
-      }).sort({ viewCount: -1 }).limit(10).lean();
+      }).select(LIST_EXCLUDE).sort({ viewCount: -1 }).limit(10).lean();
 
       if (songs.length < 5) {
         const extra = await Song.find({ isActive: true, _id: { $nin: [...alreadyPlayed, ...songs.map(s=>s._id)] } })
-          .sort({ viewCount: -1 }).limit(10 - songs.length).lean();
+          .select(LIST_EXCLUDE).sort({ viewCount: -1 }).limit(10 - songs.length).lean();
         songs = [...songs, ...extra];
       }
     } else {
-      songs = await Song.find({ isActive: true }).sort({ viewCount: -1 }).limit(10).lean();
+      songs = await Song.find({ isActive: true }).select(LIST_EXCLUDE).sort({ viewCount: -1 }).limit(10).lean();
     }
-    res.json({ success: true, songs });
+    res.json({ success: true, songs: trimForList(songs) });
   } catch {
     res.status(500).json({ success: false, message: 'Could not load recommendations' });
   }
@@ -227,13 +245,15 @@ router.get('/recommendations', optionalUser, async (req, res) => {
 router.get('/me/recent', requireUser, async (req, res) => {
   const recent = [...req.user.history].reverse().slice(0, 20);
   const songIds = recent.map(h => h.song);
-  const songs = await Song.find({ _id: { $in: songIds }, isActive: true }).lean();
+  const songs = await Song.find({ _id: { $in: songIds }, isActive: true }).select(LIST_EXCLUDE).lean();
   // preserve most-recent-first order
   const ordered = songIds.map(id => songs.find(s => String(s._id) === String(id))).filter(Boolean);
-  res.json({ success: true, songs: ordered });
+  res.json({ success: true, songs: trimForList(ordered) });
 });
 
-// GET /api/songs/:id
+// GET /api/songs/:id — full detail view, unchanged: returns every field
+// including chords and all-language lyrics, since this is the only
+// route where the user actually needs them.
 router.get('/:id', optionalUser, async (req, res) => {
   try {
     const song = await Song.findById(req.params.id);
