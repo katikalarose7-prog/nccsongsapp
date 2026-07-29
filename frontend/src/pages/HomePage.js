@@ -456,7 +456,7 @@ export default function HomePage() {
       <header className="header">
         <div className="header-inner">
           <Link to="/" className="header-logo" onClick={() => { setQuery(''); setShowFavs(false); }}>
-            <img src="/icons/icon-192.png" alt="NCC" className="header-logo-icon"
+            <img src="/icons/icon-192.jpeg" alt="NCC" className="header-logo-icon"
               style={{ borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
             <div style={{ minWidth: 0 }}>
               <span className="header-logo-name">New Covenant Church</span>
