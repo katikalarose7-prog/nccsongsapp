@@ -8,7 +8,7 @@ function LegalLayout({ title, children }) {
       <header className="header">
         <div className="header-inner">
           <Link to="/" className="header-logo">
-          <img src="/icons/icon-192.jpeg" alt="NCC" className="header-logo-icon" style={{borderRadius:'50%', objectFit:'cover'}} />
+          <img src="/icons/icon-192.png" alt="NCC" className="header-logo-icon" style={{borderRadius:'50%', objectFit:'cover'}} />
             <div>
               <span className="header-logo-name">New Covenant Church</span>
               <span className="header-logo-sub">{title}</span>
