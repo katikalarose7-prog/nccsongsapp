@@ -700,10 +700,7 @@ export default function HomePage() {
                       {detail.titleTelugu && <div style={{ fontFamily: 'var(--font-telugu)', fontSize: 15, opacity: 0.7, marginTop: 3 }}>{detail.titleTelugu}</div>}
                       <p style={{ marginTop: 6 }}>{detail.category} · {detail.language}{detail.key && ` · Key: ${detail.key}`}</p>
                     </div>
-                    <button onClick={e => toggleFav(e, detail._id)}
-                      style={{ marginTop: 100, background: 'rgba(255,255,255,0.12)', border: '1.5px solid rgba(255,255,255,0.25)', borderRadius: '50%', width: 38, height: 38, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: favs.includes(detail._id) ? '#fca5a5' : '#fff', transition: 'background 0.15s' }}>
-                      <Heart size={15} fill={favs.includes(detail._id) ? '#fca5a5' : 'none'} />
-                    </button>
+                    
                   </div>
                   <div className="modal-action-row">
                     {detail.youtubeUrl && <a href={detail.youtubeUrl} target="_blank" rel="noreferrer" className="btn btn-gold" style={{ fontSize: 13, padding: '7px 14px' }}><ExternalLink size={13} /> Watch on YouTube</a>}
@@ -711,6 +708,10 @@ export default function HomePage() {
                     {detail.chords && <button className="btn btn-outline" style={{ fontSize: 13, padding: '7px 14px' }} onClick={() => setShowChords(v => !v)}><BookOpen size={13} /> {showChords ? 'Hide Chords' : 'Chords'}</button>}
                     <AddToPlaylistButton songId={detail._id} />
                     <ShareButton songId={detail._id} title={detail.title} />
+                    <button onClick={e => toggleFav(e, detail._id)}
+                      style={{ marginTop: 0, background: 'rgba(255,255,255,0.12)', border: '1.5px solid rgba(255,255,255,0.25)', borderRadius: '50%', width: 38, height: 38, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: favs.includes(detail._id) ? '#fca5a5' : '#fff', transition: 'background 0.15s' }}>
+                      <Heart size={15} fill={favs.includes(detail._id) ? '#fca5a5' : 'none'} />
+                    </button>
                   </div>
                 </>
               ) : <div style={{ opacity: 0.6, paddingRight: 44 }}>Loading song…</div>}
