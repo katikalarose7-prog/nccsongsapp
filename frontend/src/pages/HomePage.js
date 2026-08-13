@@ -691,7 +691,7 @@ export default function HomePage() {
                       <p style={{ marginTop: 6 }}>{detail.category} · {detail.language}{detail.key && ` · Key: ${detail.key}`}</p>
                     </div>
                     <button onClick={e => toggleFav(e, detail._id)}
-                      style={{ marginTop: 28, background: 'rgba(255,255,255,0.12)', border: '1.5px solid rgba(255,255,255,0.25)', borderRadius: '50%', width: 38, height: 38, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: favs.includes(detail._id) ? '#fca5a5' : '#fff', transition: 'background 0.15s' }}>
+                      style={{ marginTop: 36, background: 'rgba(255,255,255,0.12)', border: '1.5px solid rgba(255,255,255,0.25)', borderRadius: '50%', width: 38, height: 38, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: favs.includes(detail._id) ? '#fca5a5' : '#fff', transition: 'background 0.15s' }}>
                       <Heart size={15} fill={favs.includes(detail._id) ? '#fca5a5' : 'none'} />
                     </button>
                   </div>
