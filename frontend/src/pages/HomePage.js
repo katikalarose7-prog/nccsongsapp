@@ -364,13 +364,23 @@ export default function HomePage() {
     setSelected(id); setTab('english'); setShowChords(false); setAudioPlaying(false);
     setPlaylistPickerFor(null);
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-    setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('song', id); return p; }, { replace: true });
+
+    // Only replace the history entry if the ?song= param isn't already
+    // set to this id — otherwise this replace-navigation wipes out any
+    // route state (like `returnTo` from PlaylistDetail) that got us here,
+    // because setSearchParams without an explicit `state` clears it.
+    if (searchParams.get('song') !== id) {
+      setSearchParams(
+        prev => { const p = new URLSearchParams(prev); p.set('song', id); return p; },
+        { replace: true, state: location.state }
+      );
+    }
 
     setDetail(isObject ? idOrSong : null);
 
     const res = await fetchSong(id);
     setDetail(res.song);
-  }, [setSearchParams]);
+  }, [setSearchParams, searchParams, location.state]);
 
   // FIX (playlist → song → close returns to whole song list instead
   // of the playlist): PlaylistDetail now navigates here with
@@ -691,7 +701,7 @@ export default function HomePage() {
                       <p style={{ marginTop: 6 }}>{detail.category} · {detail.language}{detail.key && ` · Key: ${detail.key}`}</p>
                     </div>
                     <button onClick={e => toggleFav(e, detail._id)}
-                      style={{ marginTop: 36, background: 'rgba(255,255,255,0.12)', border: '1.5px solid rgba(255,255,255,0.25)', borderRadius: '50%', width: 38, height: 38, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: favs.includes(detail._id) ? '#fca5a5' : '#fff', transition: 'background 0.15s' }}>
+                      style={{ marginTop: 50, background: 'rgba(255,255,255,0.12)', border: '1.5px solid rgba(255,255,255,0.25)', borderRadius: '50%', width: 38, height: 38, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: favs.includes(detail._id) ? '#fca5a5' : '#fff', transition: 'background 0.15s' }}>
                       <Heart size={15} fill={favs.includes(detail._id) ? '#fca5a5' : 'none'} />
                     </button>
                   </div>
