@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Search, X, ExternalLink, BookOpen, ChevronLeft, ChevronRight, Music, Heart, Play, Pause, LogIn, ListPlus, Plus } from 'lucide-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { fetchSongs, fetchSong, resolveAudioUrl, toggleFavourite, fetchFavourites, fetchPlaylists, addSongToPlaylist, createPlaylist } from '../services/api';
 import { useUserAuth } from '../context/Userauthcontext';
 import Footer from '../components/Footer';
@@ -91,7 +91,13 @@ function AdBanner() {
 /* ── Inline playlist picker — lightweight dropdown used directly on
    song cards so users can add to playlist without opening the song.
    Separate from AddToPlaylistButton (which is used in the modal) so
-   the card stays compact. Closes on outside click. ── */
+   the card stays compact. Closes on outside click.
+
+   FIX: every interactive element in here now stops propagation so a
+   click never bubbles up to the parent song-card's onClick (which
+   would otherwise open the full song modal instead of just adding
+   the song to the playlist). The wrapper div also stops propagation
+   as a safety net for clicks that land on padding/whitespace. ── */
 function CardPlaylistPicker({ songId, onClose }) {
   const { user } = useUserAuth();
   const [playlists, setPlaylists] = useState([]);
@@ -133,6 +139,7 @@ function CardPlaylistPicker({ songId, onClose }) {
 
   const handleCreate = async (e) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!newName.trim()) return;
     setCreating(true);
     try {
@@ -148,19 +155,24 @@ function CardPlaylistPicker({ songId, onClose }) {
   };
 
   return (
-    <div ref={ref} style={{
-      position: 'absolute',
-      // Position below the playlist icon (top-right area of card)
-      top: 36, right: 8,
-      zIndex: 50,
-      background: '#fff',
-      borderRadius: 12,
-      border: '1.5px solid var(--border)',
-      boxShadow: '0 8px 32px rgba(26,5,51,0.18)',
-      width: 220,
-      padding: 10,
-      animation: 'fadeIn 0.12s ease',
-    }}>
+    <div
+      ref={ref}
+      onClick={e => e.stopPropagation()}
+      onMouseDown={e => e.stopPropagation()}
+      style={{
+        position: 'absolute',
+        // Position below the playlist icon (top-right area of card)
+        top: 36, right: 8,
+        zIndex: 50,
+        background: '#fff',
+        borderRadius: 12,
+        border: '1.5px solid var(--border)',
+        boxShadow: '0 8px 32px rgba(26,5,51,0.18)',
+        width: 220,
+        padding: 10,
+        animation: 'fadeIn 0.12s ease',
+      }}
+    >
       <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 7 }}>
         Add to playlist
       </div>
@@ -172,7 +184,9 @@ function CardPlaylistPicker({ songId, onClose }) {
       ) : (
         <div style={{ maxHeight: 160, overflowY: 'auto', marginBottom: 8 }}>
           {playlists.map(p => (
-            <button key={p._id} onClick={() => handleAdd(p._id, p.name)} disabled={!!adding || added === p._id}
+            <button key={p._id}
+              onClick={(e) => { e.stopPropagation(); handleAdd(p._id, p.name); }}
+              disabled={!!adding || added === p._id}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 width: '100%', background: added === p._id ? 'var(--surface-2)' : 'none',
@@ -193,7 +207,7 @@ function CardPlaylistPicker({ songId, onClose }) {
         </div>
       )}
 
-      <form onSubmit={handleCreate} style={{ display: 'flex', gap: 3, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+      <form onSubmit={handleCreate} onClick={e => e.stopPropagation()} style={{ display: 'flex', gap: 3, borderTop: '1px solid var(--border)', paddingTop: 8 }}>
         <input
           value={newName} onChange={e => setNewName(e.target.value)}
           placeholder="New playlist…"
@@ -204,6 +218,7 @@ function CardPlaylistPicker({ songId, onClose }) {
           onClick={e => e.stopPropagation()}
         />
         <button type="submit" disabled={creating}
+          onClick={e => e.stopPropagation()}
           style={{
             background: 'var(--brand-light)', color: '#fff', border: 'none',
             borderRadius: 7, padding: '6px 9px', cursor: 'pointer',
@@ -218,6 +233,8 @@ function CardPlaylistPicker({ songId, onClose }) {
 export default function HomePage() {
   const { user } = useUserAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [query, setQuery]             = useState('');
   const [lang, setLang]               = useState('All');
@@ -288,6 +305,31 @@ export default function HomePage() {
       .then(r => setFavSongs(r.filter(Boolean)));
   }, [showFavs, favs]);
 
+  // FIX (iOS popup jumping to top / unreachable close button):
+  // `document.body.style.overflow = 'hidden'` alone doesn't reliably
+  // lock scroll on iOS Safari — the page can still shift, and a
+  // position:fixed overlay ends up rendered above the visible
+  // viewport when that happens. Lock with position:fixed + a
+  // negative top offset instead, and restore the exact scroll
+  // position on close.
+  useEffect(() => {
+    if (!selected) return;
+    const scrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+    return () => {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.width = '';
+      window.scrollTo(0, scrollY);
+    };
+  }, [selected]);
+
   const toggleFav = async (e, id) => {
     e.stopPropagation();
     if (user) {
@@ -322,7 +364,6 @@ export default function HomePage() {
     setSelected(id); setTab('english'); setShowChords(false); setAudioPlaying(false);
     setPlaylistPickerFor(null);
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-    document.body.style.overflow = 'hidden';
     setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('song', id); return p; }, { replace: true });
 
     setDetail(isObject ? idOrSong : null);
@@ -331,12 +372,23 @@ export default function HomePage() {
     setDetail(res.song);
   }, [setSearchParams]);
 
+  // FIX (playlist → song → close returns to whole song list instead
+  // of the playlist): PlaylistDetail now navigates here with
+  // `state: { returnTo: '/account/playlists/:id' }`. If that state is
+  // present, closing the modal sends the user back to the playlist
+  // instead of just stripping the ?song= param and stranding them on
+  // the full catalog.
   const closeSong = useCallback(() => {
     if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
     setSelected(null); setDetail(null); setShowChords(false); setAudioPlaying(false);
-    document.body.style.overflow = '';
-    setSearchParams(prev => { const p = new URLSearchParams(prev); p.delete('song'); return p; }, { replace: true });
-  }, [setSearchParams]);
+
+    const returnTo = location.state?.returnTo;
+    if (returnTo) {
+      navigate(returnTo, { replace: true });
+    } else {
+      setSearchParams(prev => { const p = new URLSearchParams(prev); p.delete('song'); return p; }, { replace: true });
+    }
+  }, [setSearchParams, navigate, location.state]);
 
   useEffect(() => {
     const songParam = searchParams.get('song');
@@ -396,7 +448,10 @@ export default function HomePage() {
 
         {/* Add to Playlist button — only shows when user is logged in, sits left of heart */}
         {user && (
-          <div style={{ position: 'absolute', top: 10, right: 38 }}>
+          <div
+            style={{ position: 'absolute', top: 10, right: 38 }}
+            onClick={e => e.stopPropagation()}
+          >
             <button
               onClick={(e) => {
                 e.stopPropagation();

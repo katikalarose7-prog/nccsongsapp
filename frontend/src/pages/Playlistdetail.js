@@ -92,7 +92,14 @@ export default function PlaylistDetail() {
                   >
                     <X size={15} />
                   </button>
-                  <Link to={`/?song=${song._id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                  {/* FIX: pass returnTo in route state so closing the song
+                      modal on HomePage brings the user back here instead of
+                      landing on the full, unfiltered song list. */}
+                  <Link
+                    to={`/?song=${song._id}`}
+                    state={{ returnTo: `/account/playlists/${id}` }}
+                    style={{ textDecoration: 'none', color: 'inherit' }}
+                  >
                     {song.songNumber && <div className="song-number">No. {song.songNumber}</div>}
                     <div className="song-title">{song.title}</div>
                     <div className="song-meta" style={{ marginTop: 10 }}>
