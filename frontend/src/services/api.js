@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API = axios.create({
   baseURL: process.env.REACT_APP_API_URL || '/api',
-  timeout: 20000, // Render free tier can take 20-30s+ to wake from a cold start
+  timeout: 120000, // Render free tier can take 20-30s+ to wake from a cold start
 });
 console.log('API URL:', process.env.REACT_APP_API_URL);
 
